@@ -128,6 +128,24 @@ remove_package() {
     fi
 }
 
+purge_package() {
+    local package="$1"
+    echo
+    echo "📦 Purging package: $package"
+    sudo apt purge -y "$package"
+    if [ $? -eq 0 ]; then
+        echo "✅ $package purged successfully!"
+    else
+        echo "❌ Failed to purge $package."
+    fi
+}
+
+search_package() {
+    local term="$1"
+    echo "🔍 Searching for: $term"
+    apt search "$term"
+}
+
 
 full_upgrade() {
     echo "⚙  Running full upgrade...!"
@@ -189,6 +207,28 @@ main() {
 		    remove_package "$package"
 		done
 		;;
+	    -pp|--purge)
+                shift
+                if [ $# -eq 0 ]; then
+                    echo "❌ No packages specified to purge."
+                    exit 1
+                fi
+
+                for package in "$@"; do
+                    purge_package "$package"
+                done
+                ;;
+	    -ps|--search)
+		shift
+		if [ $# -eq 0 ]; then
+		    echo "❌ No packages specified to search."
+		    exit 1
+		fi
+
+		for term in "$@"; do
+		    search_package "$term"
+		done
+		;;
 	    -h|--help)
 		echo
 		echo "Usage: robohelp [option]"
@@ -201,7 +241,9 @@ main() {
 		echo "	-dur, --dist-upgrade	Run distribution update for system"
 		echo
 		echo "	-i,   --install <name>	Install package via apt"
+		echo "	-ps,  --search 	<name>	Search package in repository"
 		echo " 	-rmp, --remove  <name>	Remove package from system"
+		echo "	-pp,  --purge	<name>	Remove package with all its dependencies"
 		echo
 		echo "	-h,   --help		Show this help message"
 		;;
