@@ -51,7 +51,6 @@ show_banner() {
 
 det_release() {
     distro=$(lsb_release -i | cut -f2-)
-    echo "Detected distribution: $distro"
 }
 
 # Main Functions
@@ -105,9 +104,33 @@ apt_autocls() {
     fi
 }
 
+install_package() {
+    local package="$1"
+    echo
+    echo "📦 Installing package: $package"
+    sudo apt install -y "$package"
+    if [ $? -eq 0 ]; then
+	echo "✅ $package installed successfully!"
+    else
+	echo "❌ Failed to install $package."
+    fi
+}
+
+remove_package() {
+    local package="$1"
+    echo
+    echo "📦 Removing package: $package"
+    sudo apt remove -y "$package"
+    if [ $? -eq 0 ]; then
+        echo "✅ $package removed successfully!"
+    else
+        echo "❌ Failed to remove $package."
+    fi
+}
+
 
 full_upgrade() {
-    echo "⚙️R Running full upgrade..!"
+    echo "⚙  Running full upgrade...!"
     apt_update && \
     apt_upgrade && \
     apt_autorm && \
@@ -119,46 +142,75 @@ full_upgrade() {
     fi
 }
 
-# Parse command-line flags
-case "$1" in
-    -aud|--apt-update)
-	show_banner
-	apt_update
-	;;
-    -aur|--system-upgrade)
-	show_banner
-	apt_upgrade
-	;;
-    -arm|--apt-autoremove)
-	show_banner
-	apt_autorm
-	;;
-    -acl|--apt-autoclean)
-	show_banner
-	apt_autocls
-	;;
-    -fu|--full-upgrade)
-	show_banner
-	full_upgrade
-	;;
-    -dur|--dist-upgrade)
-	show_banner
-	dist_upgrade
-	;;
-    -h|--help)
-	echo "Usage: robohelp [option]"
-	echo "	-aud, --apt-update	[1] Update APT Repositories"
-	echo "	-aur, --apt-upgrade 	[1] Upgrade installed packages"
-	echo "	-arm, --apt-autoremove  [1] Remove unnecessary packages"
-	echo "	-acl, --apt-autoclean	[1] Clean up local repository"
-	echo "	-fu,  --full-upgrade	Run full system upgrade with options from [1]"
-	echo
-	echo "	-dur, --dist-upgrade	Run distribution update for system"
-	echo "	-h,   --help		Show this help message"
-	;;
-    *)
-	show_banner
-	echo
-	echo "Unknown or no flag provided. Try -h for help."
-	;;
-esac
+main() {
+    show_banner
+    det_release
+    echo
+
+	# Parse command-line flags
+	case "$1" in
+	    -aud|--apt-update)
+		apt_update
+		;;
+	    -aur|--system-upgrade)
+		apt_upgrade
+		;;
+	    -arm|--apt-autoremove)
+		apt_autorm
+		;;
+	    -acl|--apt-autoclean)
+		apt_autocls
+		;;
+	    -fu|--full-upgrade)
+		full_upgrade
+		;;
+	    -dur|--dist-upgrade)
+		dist_upgrade
+		;;
+	    -i|--install)
+		shift
+		if [ $# -eq 0 ]; then
+		    echo "❌ No packages specified to install."
+		    exit 1
+		fi
+
+		for package in "$@"; do
+		    install_package "$package"
+		done
+		;;
+	    -rmp|--remove)
+		shift
+		if [ $# -eq 0 ]; then
+		    echo "❌ No packages specified to remove."
+                    exit 1
+		fi
+
+		for package in "$@"; do
+		    remove_package "$package"
+		done
+		;;
+	    -h|--help)
+		echo
+		echo "Usage: robohelp [option]"
+		echo "	-aud, --apt-update	[1] Update APT Repositories"
+		echo "	-aur, --apt-upgrade 	[1] Upgrade installed packages"
+		echo "	-arm, --apt-autoremove  [1] Remove unnecessary packages"
+		echo "	-acl, --apt-autoclean	[1] Clean up local repository"
+		echo "	-fu,  --full-upgrade	Run full system upgrade with options from [1]"
+		echo
+		echo "	-dur, --dist-upgrade	Run distribution update for system"
+		echo
+		echo "	-i,   --install <name>	Install package via apt"
+		echo " 	-rmp, --remove  <name>	Remove package from system"
+		echo
+		echo "	-h,   --help		Show this help message"
+		;;
+	    *)
+		echo
+		echo "Unknown or no flag provided. Try -h for help."
+		;;
+	esac
+}
+
+# Call the main function
+main "$@"
