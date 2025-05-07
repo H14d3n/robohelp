@@ -185,7 +185,7 @@ main() {
 	    -dur|--dist-upgrade)
 		dist_upgrade
 		;;
-	    -i|--install)
+	    -ai|--apt-install)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo "❌ No packages specified to install."
@@ -196,7 +196,7 @@ main() {
 		    install_package "$package"
 		done
 		;;
-	    -rmp|--remove)
+	    -arp|--apt-remove)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo "❌ No packages specified to remove."
@@ -207,7 +207,7 @@ main() {
 		    remove_package "$package"
 		done
 		;;
-	    -pp|--purge)
+	    -ap|--apt-purge)
                 shift
                 if [ $# -eq 0 ]; then
                     echo "❌ No packages specified to purge."
@@ -218,7 +218,7 @@ main() {
                     purge_package "$package"
                 done
                 ;;
-	    -ps|--search)
+	    -as|--apt-search)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo "❌ No packages specified to search."
@@ -240,10 +240,10 @@ main() {
 		echo
 		echo "	-dur, --dist-upgrade	Run distribution update for system"
 		echo
-		echo "	-i,   --install <name>	Install package via apt"
-		echo "	-ps,  --search 	<name>	Search package in repository"
-		echo " 	-rmp, --remove  <name>	Remove package from system"
-		echo "	-pp,  --purge	<name>	Remove package with all its dependencies"
+		echo "	-ai,  --apt-install 	<name>	Install package via apt"
+		echo "	-as,  --apt-search 	<name>	Search package in repository"
+		echo " 	-arp, --apt-remove	<name>	Remove package from system"
+		echo "	-ap,  --apt-purge	<name>	Remove package with all its dependencies"
 		echo
 		echo "	-h,   --help		Show this help message"
 		;;
