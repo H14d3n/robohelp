@@ -2,12 +2,12 @@
 
 title='
 
-█▄▄▄▄ ████▄ ███   ████▄  ▄  █ ▄███▄   █    █ ▄▄  
-█  ▄▀ █   █ █  █  █   █ █   █ █▀   ▀  █    █   █ 
-█▀▀▌  █   █ █ ▀ ▄ █   █ ██▀▀█ ██▄▄    █    █▀▀▀  
-█  █  ▀████ █  ▄▀ ▀████ █   █ █▄   ▄▀ ███▄ █     
-  █         ███            █  ▀███▀       ▀ █    
- ▀                        ▀                  ▀   
+█▄▄▄▄ ████▄ ███   ████▄  ▄  █ ▄███▄   █    █ ▄▄
+█  ▄▀ █   █ █  █  █   █ █   █ █▀   ▀  █    █   █
+█▀▀▌  █   █ █ ▀ ▄ █   █ ██▀▀█ ██▄▄    █    █▀▀▀
+█  █  ▀████ █  ▄▀ ▀████ █   █ █▄   ▄▀ ███▄ █
+  █         ███            █  ▀███▀       ▀ █
+ ▀                        ▀                  ▀
 '
 
 bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -160,6 +160,63 @@ full_upgrade() {
     fi
 }
 
+check_installed() {
+    if command -v "$1" &> /dev/null; then
+        return 0
+    else
+	return 1
+    fi
+}
+
+ansible_deploy() {
+    check_installed "ansible" || exit 1
+
+    echo
+    echo "Welcome to the AFM - Ansible Fast Management"
+    echo "What would you like to do?"
+    echo
+    echo "[1] Run Playbook (with Flags)"
+    echo "[2] Test Connection (Ping Hosts)"
+    echo "[3] View Inventory"
+    echo "[4] View Last Run Log"
+    echo "[5] Exit"
+    echo
+
+    read -r option
+
+    if printf -- '%d' "${option}" > /dev/null 2>&1; then
+	case "${option}" in
+	    1)
+		echo "1 test"
+		;;
+	    2)
+		echo "2 was selected"
+		;;
+	    3)
+                ls -R | grep .yml
+                ;;
+	    4)
+                log_file="/var/log/ansible.log"
+
+		if [ -f "$log_file" ]; then
+		    echo "📄 Showing Ansible log: $log_file"
+		    tail -n 50 "$log_file"
+            	else
+                    echo "⚠️  No Ansible log found at $log_file"
+            	fi
+                ;;
+	    5)
+                echo "5 was selected"
+                ;;
+	    *)
+		echo "Unsupported option"
+		;;
+	esac
+    else
+	echo "Unsupported option"
+    fi
+}
+
 main() {
     show_banner
     det_release
@@ -229,6 +286,9 @@ main() {
 		    search_package "$term"
 		done
 		;;
+	    -A|--ansible)
+		ansible_deploy
+		;;
 	    -h|--help)
 		echo
 		echo "Usage: robohelp [option]"
@@ -245,6 +305,7 @@ main() {
 		echo " 	-arp, --apt-remove	<name>	Remove package from system"
 		echo "	-ap,  --apt-purge	<name>	Remove package with all its dependencies"
 		echo
+		echo "	-A,   --ansible		Ansible Management"
 		echo "	-h,   --help		Show this help message"
 		;;
 	    *)
