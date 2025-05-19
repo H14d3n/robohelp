@@ -193,8 +193,15 @@ ansible_deploy() {
 		echo "2 was selected"
 		;;
 	    3)
-                ls -R | grep .yml
-                ;;
+		mapfile -t playbooks < <(find . -type f -name "*.yml")
+		loop=0
+		for playbook in "${playbooks[@]}"; do
+		    ((loop++))
+		    dir_path=$(dirname "$playbook")
+		    file_name=$(basename "$playbook")
+		    printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
+		done
+	        ;;
 	    4)
                 log_file="/var/log/ansible.log"
 
@@ -206,7 +213,6 @@ ansible_deploy() {
             	fi
                 ;;
 	    5)
-                echo "5 was selected"
                 ;;
 	    *)
 		echo "Unsupported option"
