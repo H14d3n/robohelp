@@ -42,6 +42,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 
 
 mainloop=0
+timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
 # Function to print banner
 show_banner() {
@@ -49,11 +50,20 @@ show_banner() {
     echo "$bb8"
 }
 
+# Function to determine distro
 det_release() {
     distro=$(lsb_release -i | cut -f2-)
 }
 
 # Main Functions
+check_installed() {
+    if command -v "$1" &> /dev/null; then
+        return 0
+    else
+	return 1
+    fi
+}
+
 apt_update() {
     echo "📦 Running APT Repository update..."
     sudo apt update -y
@@ -160,12 +170,68 @@ full_upgrade() {
     fi
 }
 
-check_installed() {
-    if command -v "$1" &> /dev/null; then
+# Dev Automation
+mv_robohelp() {
+    sudo cp robohelp.sh /usr/local/bin/robohelp
+}
+
+find_playbook() {
+    mapfile -t playbooks < <(find . -type f -name "*.yml")
+    loop=-1
+    for playbook in "${playbooks[@]}"; do
+        ((loop++))
+        dir_path=$(dirname "$playbook")
+        file_name=$(basename "$playbook")
+        printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
+    done
+}
+
+check_if_flags() {
+    echo ""
+}
+
+log_exists() {
+    log_path="/var/log/afmrun.log"
+    if [ -f "$log_path" ]; then
         return 0
     else
-	return 1
+	sudo touch "$log_path"
     fi
+}
+
+log_write() {
+    if [ "$1" = "scs" ]; then
+    	echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
+    else
+	echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
+    fi
+}
+
+log_actions() {
+    log_exists && log_write "$1"
+}
+
+run_playbook() {
+    echo "What playbook would you like to run?"
+    read -r selected_index
+    check_if_flags
+    ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v
+
+    if [ $? -eq 0 ]; then
+	log_actions "scs"
+    else
+	log_actions "fail"
+    fi
+}
+
+playbook_actions() {
+# Is always executed
+find_playbook
+
+if [ "$1" = "run" ]; then
+    run_playbook
+fi
+
 }
 
 ansible_deploy() {
@@ -187,20 +253,13 @@ ansible_deploy() {
     if printf -- '%d' "${option}" > /dev/null 2>&1; then
 	case "${option}" in
 	    1)
-		echo "1 test"
+		playbook_actions "run"
 		;;
 	    2)
 		echo "2 was selected"
 		;;
 	    3)
-		mapfile -t playbooks < <(find . -type f -name "*.yml")
-		loop=0
-		for playbook in "${playbooks[@]}"; do
-		    ((loop++))
-		    dir_path=$(dirname "$playbook")
-		    file_name=$(basename "$playbook")
-		    printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
-		done
+		playbook_actions
 	        ;;
 	    4)
                 log_file="/var/log/ansible.log"
