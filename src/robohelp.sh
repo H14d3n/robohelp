@@ -40,9 +40,17 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀⠀⠈⠻⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
-
+# Variables
 mainloop=0
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
 # Function to print banner
 show_banner() {
@@ -65,108 +73,108 @@ check_installed() {
 }
 
 apt_update() {
-    echo "📦 Running APT Repository update..."
+    echo -e "${CYAN}📦 Running APT Repository update...${NC}"
     sudo apt update -y
     if [ $? -eq 0 ]; then
-        echo "✅ Updated repositories successfully on $distro."
+        echo -e "${GREEN}✅ Updated repositories successfully on $distro.${NC}"
     else
-	echo "❌ Failed to update repositories on $distro. Exit code: $?"
+	echo -e "${RED}❌ Failed to update repositories on $distro. Exit code: $? ${NC}"
     fi
 }
 
 apt_upgrade() {
-    echo "📦 Upgrading installed packages..."
+    echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
     sudo apt upgrade -y
     if [ $? -eq 0 ]; then
-        echo "✅ Installed updates successfully on $distro."
+        echo -e "${GREEN}✅ Installed updates successfully on $distro.${NC}"
     else
-        echo "❌ Failed to update packages on $distro. Exit code: $?"
+        echo -e "${RED}❌ Failed to update packages on $distro. Exit code: $? ${NC}"
     fi
 }
 
 dist_upgrade() {
-    echo "📦 Upgrading distribution and dependencies..."
+    echo -e "${CYAN}📦 Upgrading distribution and dependencies...${NC}"
     sudo apt dist-upgrade -y
     if [ $? -eq 0 ]; then
-        echo "✅ Upgraded distribution successfully."
+        echo -e "${GREEN}✅ Upgraded distribution successfully.${NC}"
     else
-        echo "❌ Failed to upgrade $distro. Exit code: $?"
+        echo -e "${RED}❌ Failed to upgrade $distro. Exit code: $? ${NC}"
     fi
 }
 
 apt_autorm() {
-    echo "🧹 Removing unnecessary packages..."
+    echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
     sudo apt autoremove -y
     if [ $? -eq 0 ]; then
-        echo "✅ Autoremove completed successfully on $distro."
+        echo -e "${GREEN}✅ Autoremove completed successfully on $distro.${NC}"
     else
-        echo "❌ Autoremove failed on $distro. Exit code: $?"
+        echo -e "${RED}❌ Autoremove failed on $distro. Exit code: $? ${NC}"
     fi
 }
 
 apt_autocls() {
-    echo "🧼 Cleaning up local repository..."
+    echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
     sudo apt autoclean -y
     if [ $? -eq 0 ]; then
-        echo "✅ Autoclean completed successfully on $distro."
+        echo -e "${GREEN}✅ Autoclean completed successfully on $distro.${NC}"
     else
-        echo "❌ Autoclean failed on $distro. Exit code: $?"
+        echo -e "${RED}❌ Autoclean failed on $distro. Exit code: $? ${NC}"
     fi
 }
 
 install_package() {
     local package="$1"
     echo
-    echo "📦 Installing package: $package"
+    echo -e "${CYAN}📦 Installing package: $package${NC}"
     sudo apt install -y "$package"
     if [ $? -eq 0 ]; then
-	echo "✅ $package installed successfully!"
+	echo -e "${GREEN}✅ $package installed successfully!${NC}"
     else
-	echo "❌ Failed to install $package."
+	echo -e "${RED}❌ Failed to install $package.${NC}"
     fi
 }
 
 remove_package() {
     local package="$1"
     echo
-    echo "📦 Removing package: $package"
+    echo -e "${CYAN}📦 Removing package: $package${NC}"
     sudo apt remove -y "$package"
     if [ $? -eq 0 ]; then
-        echo "✅ $package removed successfully!"
+        echo -e "${GREEN}✅ $package removed successfully!${NC}"
     else
-        echo "❌ Failed to remove $package."
+        echo -e "${RED}❌ Failed to remove $package.${NC}"
     fi
 }
 
 purge_package() {
     local package="$1"
     echo
-    echo "📦 Purging package: $package"
+    echo -e "${CYAN}📦 Purging package: $package${NC}"
     sudo apt purge -y "$package"
     if [ $? -eq 0 ]; then
-        echo "✅ $package purged successfully!"
+        echo -e "${GREEN}✅ $package purged successfully!${NC}"
     else
-        echo "❌ Failed to purge $package."
+        echo -e "${RED}❌ Failed to purge $package.${NC}"
     fi
 }
 
 search_package() {
     local term="$1"
-    echo "🔍 Searching for: $term"
+    echo -e "${BLUE}🔍 Searching for: $term${NC}"
     apt search "$term"
 }
 
 
 full_upgrade() {
-    echo "⚙  Running full upgrade...!"
+    echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
     apt_update && \
     apt_upgrade && \
     apt_autorm && \
     apt_autocls && \
     if [ $? -eq 0 ]; then
-	echo "✅ Full upgrade completed successfully!"
+	echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}"
     else
-	echo "❌ An error occurred during the upgrade. Exit code: $?"
+	echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
     fi
 }
 
@@ -224,7 +232,7 @@ run_ping() {
 }
 
 run_playbook() {
-    echo "What playbook would you like to run?"
+    echo -e "${CYAN}What playbook would you like to run?${NC}"
     read -r selected_index
     check_if_flags
     ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
@@ -247,11 +255,11 @@ ansible_deploy() {
     echo "Welcome to the AFM - Ansible Fast Management"
     echo "What would you like to do?"
     echo
-    echo "[1] Run Playbook (with Flags)"
-    echo "[2] Test Connection (Ping Hosts)"
-    echo "[3] View Inventory"
-    echo "[4] View Last Run Log"
-    echo "[5] Exit"
+    echo "> [1] Run Playbook (with Flags)"
+    echo "> [2] Test Connection (Ping Hosts)"
+    echo "> [3] View Inventory"
+    echo "> [4] View Last Run Log"
+    echo "> [5] Exit"
     echo
 
     read -r option
@@ -272,11 +280,11 @@ ansible_deploy() {
 
 		if [ -f "$log_file" ]; then
 		    echo
-		    echo "📄 Showing Ansible log: $log_file"
+		    echo -e "${YELLOW}📄 Showing Ansible log: $log_file.${NC}"
 		    echo
 		    tail -n 50 "$log_file"
             	else
-                    echo "⚠️  No Ansible log found at $log_file"
+                    echo -e "${RED}⚠️  nAnsible log found at $log_file.${NC}"
             	fi
                 ;;
 	    5)
@@ -318,7 +326,7 @@ main() {
 	    -ai|--apt-install)
 		shift
 		if [ $# -eq 0 ]; then
-		    echo "❌ No packages specified to install."
+		    echo -e "${RED}❌ No packages specified to install.${NC}"
 		    exit 1
 		fi
 
@@ -329,7 +337,7 @@ main() {
 	    -arp|--apt-remove)
 		shift
 		if [ $# -eq 0 ]; then
-		    echo "❌ No packages specified to remove."
+		    echo -e "${RED}❌ No packages specified to remove.${NC}"
                     exit 1
 		fi
 
@@ -340,7 +348,7 @@ main() {
 	    -ap|--apt-purge)
                 shift
                 if [ $# -eq 0 ]; then
-                    echo "❌ No packages specified to purge."
+                    echo -e "${RED}❌ No packages specified to purge.${NC}"
                     exit 1
                 fi
 
@@ -351,7 +359,7 @@ main() {
 	    -as|--apt-search)
 		shift
 		if [ $# -eq 0 ]; then
-		    echo "❌ No packages specified to search."
+		    echo -e "${RED}❌ No packages specified to search.${NC}"
 		    exit 1
 		fi
 
