@@ -191,37 +191,43 @@ check_if_flags() {
 }
 
 log_exists() {
-    log_path="/var/log/afmrun.log"
+    log_path="$HOME/.log/afmrun.log"
     if [ -f "$log_path" ]; then
         return 0
     else
-	sudo touch "$log_path"
+	mkdir -p "$(dirname "$log_path")"
+	touch "$log_path"
     fi
 }
 
 log_write() {
-    if [ "$1" = "scs" ]; then
-    	echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
-    else
+    case "$1" in
+      "scs")
+	echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
+ 	;;
+      "ping")
+	echo "$timestamp - Ping ran successfully" >> "$log_path"
+	;;
+      "fail")
 	echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
-    fi
+	;;
+    esac
 }
 
 log_actions() {
     log_exists && log_write "$1"
 }
 
+
+run_ping() {
+    ansible all -m ping && log_actions "ping" || log_actions "fail"
+}
+
 run_playbook() {
     echo "What playbook would you like to run?"
     read -r selected_index
     check_if_flags
-    ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v
-
-    if [ $? -eq 0 ]; then
-	log_actions "scs"
-    else
-	log_actions "fail"
-    fi
+    ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
 }
 
 playbook_actions() {
@@ -256,16 +262,18 @@ ansible_deploy() {
 		playbook_actions "run"
 		;;
 	    2)
-		echo "2 was selected"
+		run_ping
 		;;
 	    3)
 		playbook_actions
 	        ;;
 	    4)
-                log_file="/var/log/ansible.log"
+                log_file="$HOME/.log/afmrun.log"
 
 		if [ -f "$log_file" ]; then
+		    echo
 		    echo "📄 Showing Ansible log: $log_file"
+		    echo
 		    tail -n 50 "$log_file"
             	else
                     echo "⚠️  No Ansible log found at $log_file"
