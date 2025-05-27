@@ -81,7 +81,7 @@ det_release() {
     fi
 
     case "$distro" in
-	Ubuntu|Debian|Kali)
+	Ubuntu|ubuntu|Debian|debian|Kali|kali)
 	    update_cmd="sudo apt update -y"
 	    upgrade_cmd="sudo apt upgrade -y"
 	    dist_upgrade_cmd="sudo apt dist-upgrade -y"
@@ -92,7 +92,7 @@ det_release() {
 	    purge_cmd="sudo apt purge -y"
 	    search_cmd="apt search"
 	    ;;
-	Fedora)
+	Fedora|fedora)
 	    update_cmd="sudo dnf check-update"
             upgrade_cmd="sudo dnf upgrade -y"
             dist_upgrade_cmd="sudo dnf system-upgrade download --releasever=$(($(rmp -E %fedora)+1))"
@@ -103,7 +103,7 @@ det_release() {
             purge_cmd="sudo dnf remove -y"
             search_cmd="dnf search"
 	    ;;
-	CentOS|RHEL)
+	CentOS|Centos|centOS|centos|RHEL|rhel)
 	    update_cmd="sudo yum check-update"
             upgrade_cmd="sudo yum update -y"
             dist_upgrade_cmd="unknown" # Manual upgrade for major versions
@@ -114,18 +114,18 @@ det_release() {
             purge_cmd="sudo yum remove -y"
             search_cmd="yum search"
 	    ;;
-	Arch|Manjaro)
+	Arch|arch|Manjaro|manjaro)
 	    update_cmd="sudo pacman -Syu"
             upgrade_cmd="sudo pacman -Syu"
             dist_upgrade_cmd="unknown" # Manual upgrade for major versions
-            autoremove_cmd="sudo pacman -Rns"
+            autoremove_cmd="sudo pacman -Rns $(pacman -Qdtq)"
             autoclean_cmd="sudo pacman -Sc"
 	    install_cmd="sudo pacman -S --noconfirm"
 	    remove_cmd="sudo pacman -R --noconfirm"
             purge_cmd="sudo pacman -Rns --noconfirm"
             search_cmd="pacman -Ss"
 	    ;;
-	openSUSE*|SLES)
+	openSUSE*|opensuse*|SLES|sles)
 	    update_cmd="sudo zypper refresh"
             upgrade_cmd="sudo zypper update -y"
             dist_upgrade_cmd="sudo zypper dist-upgrade -y"
@@ -254,7 +254,7 @@ package_search() {
 
 full_upgrade() {
     echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
-    if 
+    if
 	package_update && \
     	package_upgrade && \
     	package_autorm && \
