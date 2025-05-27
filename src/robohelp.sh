@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 title='
 
 █▄▄▄▄ ████▄ ███   ████▄  ▄  █ ▄███▄   █    █ ▄▄
@@ -40,9 +41,20 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀⠀⠈⠻⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
-# Variables
+# Global Variables
 mainloop=0
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+
+install_cmd=""
+update_cmd=""
+upgrade_cmd=""
+dist_upgrade_cmd=""
+autoremove_cmd=""
+autoclean_cmd=""
+install_cmd=""
+remove_cmd=""
+purge_cmd=""
+search_cmd=""
 
 # Colors
 RED='\033[0;31m'
@@ -58,9 +70,77 @@ show_banner() {
     echo "$bb8"
 }
 
-# Function to determine distro
+# Function to determine distro and set commands
 det_release() {
-    distro=$(lsb_release -i | cut -f2-)
+    if command -v lsb_release &>/dev/null; then
+	distro=$(lsb_release -si)
+    elif [ -f /etc/os-release ]; then
+	distro=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"' )
+    else
+	distro="unknown"
+    fi
+
+    case "$distro" in
+	Ubuntu|Debian|Kali)
+	    update_cmd="sudo apt update -y"
+	    upgrade_cmd="sudo apt upgrade -y"
+	    dist_upgrade_cmd="sudo apt dist-upgrade -y"
+	    autoremove_cmd="sudo apt autoremove -y"
+	    autoclean_cmd="sudo apt autoclean -y"
+	    install_cmd="sudo apt install -y"
+	    remove_cmd="sudo apt remove -y"
+	    purge_cmd="sudo apt purge -y"
+	    search_cmd="apt search"
+	    ;;
+	Fedora)
+	    update_cmd="sudo dnf check-update"
+            upgrade_cmd="sudo dnf upgrade -y"
+            dist_upgrade_cmd="sudo dnf system-upgrade download --releasever=$(($(rmp -E %fedora)+1))"
+            autoremove_cmd="sudo dnf autoremove -y"
+            autoclean_cmd="sudo dnf clean all"
+	    install_cmd="sudo dnf install -y"
+	    remove_cmd="sudo dnf remove -y"
+            purge_cmd="sudo dnf remove -y"
+            search_cmd="dnf search"
+	    ;;
+	CentOS|RHEL)
+	    update_cmd="sudo yum check-update"
+            upgrade_cmd="sudo yum update -y"
+            dist_upgrade_cmd="unknown" # Manual upgrade for major versions
+            autoremove_cmd="sudo yum autoremove -y"
+            autoclean_cmd="sudo yum clean all"
+	    install_cmd="sudo yum install -y"
+	    remove_cmd="sudo yum remove -y"
+            purge_cmd="sudo yum remove -y"
+            search_cmd="yum search"
+	    ;;
+	Arch|Manjaro)
+	    update_cmd="sudo pacman -Syu"
+            upgrade_cmd="sudo pacman -Syu"
+            dist_upgrade_cmd="unknown" # Manual upgrade for major versions
+            autoremove_cmd="sudo pacman -Rns"
+            autoclean_cmd="sudo pacman -Sc"
+	    install_cmd="sudo pacman -S --noconfirm"
+	    remove_cmd="sudo pacman -R --noconfirm"
+            purge_cmd="sudo pacman -Rns --noconfirm"
+            search_cmd="pacman -Ss"
+	    ;;
+	openSUSE*|SLES)
+	    update_cmd="sudo zypper refresh"
+            upgrade_cmd="sudo zypper update -y"
+            dist_upgrade_cmd="sudo zypper dist-upgrade -y"
+            autoremove_cmd="sudo zypper remove --clean-deps"
+            autoclean_cmd="sudo zypper clean"
+	    install_cmd="sudo zypper install -y"
+	    remove_cmd="sudo zypper remove -y"
+            purge_cmd="sudo zypper remove -y"
+            search_cmd="zypper search"
+	    ;;
+	*)
+	    echo -e "${RED} ❌ Unsupported distro: $distro. Please edit the script manually. ${NC}"
+	    exit 1
+	    ;;
+    esac
 }
 
 # Main Functions
@@ -72,9 +152,9 @@ check_installed() {
     fi
 }
 
-apt_update() {
+package_update() {
     echo -e "${CYAN}📦 Running APT Repository update...${NC}"
-    sudo apt update -y
+    $update_cmd
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Updated repositories successfully on $distro.${NC}"
     else
@@ -82,9 +162,9 @@ apt_update() {
     fi
 }
 
-apt_upgrade() {
+package_upgrade() {
     echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
-    sudo apt upgrade -y
+    $upgrade_cmd
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Installed updates successfully on $distro.${NC}"
     else
@@ -94,7 +174,14 @@ apt_upgrade() {
 
 dist_upgrade() {
     echo -e "${CYAN}📦 Upgrading distribution and dependencies...${NC}"
-    sudo apt dist-upgrade -y
+
+    if [ "$dist_upgrade_cmd" = "unknown" ]; then
+	echo -e "${BLUE}🛑 This command is not available for your distribution${NC}"
+	return 1
+    else
+	$dist_upgrade_cmd
+    fi
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Upgraded distribution successfully.${NC}"
     else
@@ -102,9 +189,9 @@ dist_upgrade() {
     fi
 }
 
-apt_autorm() {
+package_autorm() {
     echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
-    sudo apt autoremove -y
+    $autoremove_cmd
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Autoremove completed successfully on $distro.${NC}"
     else
@@ -112,9 +199,9 @@ apt_autorm() {
     fi
 }
 
-apt_autocls() {
+package_autocls() {
     echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
-    sudo apt autoclean -y
+    $autoclean_cmd
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Autoclean completed successfully on $distro.${NC}"
     else
@@ -122,11 +209,11 @@ apt_autocls() {
     fi
 }
 
-install_package() {
+package_install() {
     local package="$1"
     echo
     echo -e "${CYAN}📦 Installing package: $package${NC}"
-    sudo apt install -y "$package"
+    $install_cmd "$package"
     if [ $? -eq 0 ]; then
 	echo -e "${GREEN}✅ $package installed successfully!${NC}"
     else
@@ -134,11 +221,11 @@ install_package() {
     fi
 }
 
-remove_package() {
+package_remove() {
     local package="$1"
     echo
     echo -e "${CYAN}📦 Removing package: $package${NC}"
-    sudo apt remove -y "$package"
+    $remove_cmd "$package"
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ $package removed successfully!${NC}"
     else
@@ -146,11 +233,11 @@ remove_package() {
     fi
 }
 
-purge_package() {
+package_purge() {
     local package="$1"
     echo
     echo -e "${CYAN}📦 Purging package: $package${NC}"
-    sudo apt purge -y "$package"
+    $purge_cmd "$package"
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ $package purged successfully!${NC}"
     else
@@ -158,23 +245,23 @@ purge_package() {
     fi
 }
 
-search_package() {
+package_search() {
     local term="$1"
     echo -e "${BLUE}🔍 Searching for: $term${NC}"
-    apt search "$term"
+    $search_cmd "$term"
 }
 
 
 full_upgrade() {
     echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
-    apt_update && \
-    apt_upgrade && \
-    apt_autorm && \
-    apt_autocls && \
-    if [ $? -eq 0 ]; then
-	echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}"
+    if 
+	package_update && \
+    	package_upgrade && \
+    	package_autorm && \
+    	package_autocls; then
+	    echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}"
     else
-	echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
+	    echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
     fi
 }
 
@@ -248,6 +335,7 @@ fi
 
 }
 
+# Ansible Fast Management [AFM]
 ansible_deploy() {
     check_installed "ansible" || exit 1
 
@@ -284,7 +372,7 @@ ansible_deploy() {
 		    echo
 		    tail -n 50 "$log_file"
             	else
-                    echo -e "${RED}⚠️  nAnsible log found at $log_file.${NC}"
+                    echo -e "${RED}⚠️  nNo Ansible log found at $log_file.${NC}"
             	fi
                 ;;
 	    5)
@@ -305,17 +393,17 @@ main() {
 
 	# Parse command-line flags
 	case "$1" in
-	    -aud|--apt-update)
-		apt_update
+	    -pud|--p-update)
+		package_update
 		;;
-	    -aur|--system-upgrade)
-		apt_upgrade
+	    -pur|--p-upgrade)
+		package_upgrade
 		;;
-	    -arm|--apt-autoremove)
-		apt_autorm
+	    -arm|--p-autoremove)
+		package_autorm
 		;;
-	    -acl|--apt-autoclean)
-		apt_autocls
+	    -acl|--p-autoclean)
+		package_autocls
 		;;
 	    -fu|--full-upgrade)
 		full_upgrade
@@ -323,7 +411,7 @@ main() {
 	    -dur|--dist-upgrade)
 		dist_upgrade
 		;;
-	    -ai|--apt-install)
+	    -pi|--p-install)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo -e "${RED}❌ No packages specified to install.${NC}"
@@ -331,10 +419,10 @@ main() {
 		fi
 
 		for package in "$@"; do
-		    install_package "$package"
+		    package_install "$package"
 		done
 		;;
-	    -arp|--apt-remove)
+	    -prm|--p-remove)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo -e "${RED}❌ No packages specified to remove.${NC}"
@@ -342,10 +430,10 @@ main() {
 		fi
 
 		for package in "$@"; do
-		    remove_package "$package"
+		    package_remove "$package"
 		done
 		;;
-	    -ap|--apt-purge)
+	    -pp|--p-purge)
                 shift
                 if [ $# -eq 0 ]; then
                     echo -e "${RED}❌ No packages specified to purge.${NC}"
@@ -353,10 +441,10 @@ main() {
                 fi
 
                 for package in "$@"; do
-                    purge_package "$package"
+                    package_purge "$package"
                 done
                 ;;
-	    -as|--apt-search)
+	    -ps|--p-search)
 		shift
 		if [ $# -eq 0 ]; then
 		    echo -e "${RED}❌ No packages specified to search.${NC}"
@@ -364,7 +452,7 @@ main() {
 		fi
 
 		for term in "$@"; do
-		    search_package "$term"
+		    package_search "$term"
 		done
 		;;
 	    -A|--ansible)
@@ -373,18 +461,18 @@ main() {
 	    -h|--help)
 		echo
 		echo "Usage: robohelp [option]"
-		echo "	-aud, --apt-update	[1] Update APT Repositories"
-		echo "	-aur, --apt-upgrade 	[1] Upgrade installed packages"
-		echo "	-arm, --apt-autoremove  [1] Remove unnecessary packages"
-		echo "	-acl, --apt-autoclean	[1] Clean up local repository"
+		echo "	-pud, --p-update	[1] Update Package Repositories"
+		echo "	-pur, --p-upgrade 	[1] Upgrade installed packages"
+		echo "	-arm, --p-autoremove  	[1] Remove unnecessary packages"
+		echo "	-acl, --p-autoclean	[1] Clean up local repository"
 		echo "	-fu,  --full-upgrade	Run full system upgrade with options from [1]"
 		echo
 		echo "	-dur, --dist-upgrade	Run distribution update for system"
 		echo
-		echo "	-ai,  --apt-install 	<name>	Install package via apt"
-		echo "	-as,  --apt-search 	<name>	Search package in repository"
-		echo " 	-arp, --apt-remove	<name>	Remove package from system"
-		echo "	-ap,  --apt-purge	<name>	Remove package with all its dependencies"
+		echo "	-pi,  --p-install 	<name>	Install package from repository"
+		echo "	-ps,  --p-search 	<name>	Search package in repository"
+		echo " 	-prm, --p-remove	<name>	Remove package from system"
+		echo "	-pp,  --p-purge		<name>	Remove package with all its dependencies"
 		echo
 		echo "	-A,   --ansible		Ansible Management"
 		echo "	-h,   --help		Show this help message"
