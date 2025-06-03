@@ -280,10 +280,6 @@ find_playbook() {
     done
 }
 
-check_if_flags() {
-    echo ""
-}
-
 log_exists() {
     log_path="$HOME/.log/afmrun.log"
     if [ -f "$log_path" ]; then
@@ -318,10 +314,18 @@ run_ping() {
 }
 
 run_playbook() {
-    echo -e "${CYAN}What playbook would you like to run?${NC}"
-    read -r selected_index
-    check_if_flags
-    ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+    echo -e "${CYAN}What playbook would you like to run? [e.g. 1 remove]${NC}"
+    read -r input
+
+    # Extract the first word as the index, and the rest as flags
+    selected_index=$(echo "$input" | awk '{print $1}')
+    additional_flags=$(echo "$input" | cut -d' ' -f2-)
+
+    if [ -n "$additional_flags" ]; then
+	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+    else
+        ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+    fi
 }
 
 playbook_actions() {
