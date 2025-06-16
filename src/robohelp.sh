@@ -321,10 +321,33 @@ run_playbook() {
     selected_index=$(echo "$input" | awk '{print $1}')
     additional_flags=$(echo "$input" | cut -d' ' -f2-)
 
+    echo -e "${CYAN}Do you use Ansible Vault? [Yes | No]${NC}"
+    read -r ansible_vault_val
+
     if [ -n "$additional_flags" ]; then
-	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+	case "${ansible_vault_val}" in
+	    Yes|yes)
+	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-vault-pass -v && log_actions "scs" || log_actions "fail"
+	    	;;
+	    No|no)
+	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+		;;
+	    *)
+		echo -e "${RED}Invalid input - Specify if you use ansible vault${NC}"
+		;;
+ 	esac
     else
-        ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+	case "${ansible_vault_val}" in
+	    Yes|yes)
+            	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-vault-pass -v && log_actions "scs" || log_actions "fail"
+	    	;;
+	    No|no)
+	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+	    	;;
+	    *)
+		echo -e "${RED}Invalid input - Specify if you use ansible vault${NC}"
+		;;
+	esac
     fi
 }
 
