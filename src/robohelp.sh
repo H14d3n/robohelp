@@ -61,7 +61,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m' # No Color - Always put in the end of every message
 
 # Function to print banner
 show_banner() {
@@ -301,6 +301,9 @@ log_write() {
       "fail")
 	echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
 	;;
+      "pingfail")
+	echo "$timestamp - Running Ping with inventory file failed" >> "$log_path"
+	;;
     esac
 }
 
@@ -310,7 +313,7 @@ log_actions() {
 
 
 run_ping() {
-    ansible all -m ping && log_actions "ping" || log_actions "fail"
+    ansible all -i hosts.* -m ping && log_actions "ping" || log_actions "pingfail"
 }
 
 run_playbook() {
@@ -352,13 +355,12 @@ run_playbook() {
 }
 
 playbook_actions() {
-# Is always executed
-find_playbook
+    # Is always executed
+    find_playbook
 
-if [ "$1" = "run" ]; then
-    run_playbook
-fi
-
+    if [ "$1" = "run" ]; then
+        run_playbook
+    fi
 }
 
 # Ansible Fast Management [AFM]
@@ -398,7 +400,7 @@ ansible_deploy() {
 		    echo
 		    tail -n 50 "$log_file"
             	else
-                    echo -e "${RED}⚠️  nNo Ansible log found at $log_file.${NC}"
+                    echo -e "${RED}🛑 No Ansible log found at $log_file.${NC}"
             	fi
                 ;;
 	    5)
@@ -500,7 +502,7 @@ main() {
 		echo " 	-prm, --p-remove	<name>	Remove package from system"
 		echo "	-pp,  --p-purge		<name>	Remove package with all its dependencies"
 		echo
-		echo "	-A,   --ansible		Ansible Management"
+		echo "	-A,   --ansible		Ansible Fast Management"
 		echo "	-h,   --help		Show this help message"
 		;;
 	    *)
