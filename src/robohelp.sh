@@ -41,8 +41,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀⠀⠈⠻⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
-# Global Variables
-mainloop=0
+# Variable Declaration
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
 install_cmd=""
@@ -140,6 +139,16 @@ det_release() {
 	    exit 1
 	    ;;
     esac
+}
+
+# Check if user has sudo rights
+require_root() {
+    if sudo -l -U "$USER" &>/dev/null; then
+	return 0
+    else
+	echo -e "${RED} ❌ This script must be run as root or with sudo rights.${NC}"
+	exit 1
+    fi
 }
 
 # Main Functions
@@ -253,15 +262,12 @@ package_search() {
 
 full_upgrade() {
     echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
-    if
-	package_update && \
-    	package_upgrade && \
-    	package_autorm && \
-    	package_autocls; then
-	    echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}"
-    else
-	    echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
-    fi
+    package_update && \
+    package_upgrade && \
+    package_autorm && \
+    package_autocls && \
+    echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" || \
+    echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
 }
 
 # Dev Automation
@@ -279,6 +285,7 @@ find_playbook() {
         printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
     done
 }
+
 
 log_exists() {
     log_path="$HOME/.log/afmrun.log"
@@ -404,6 +411,7 @@ ansible_deploy() {
             	fi
                 ;;
 	    5)
+		exit 1
                 ;;
 	    *)
 		echo "Unsupported option"
@@ -417,6 +425,7 @@ ansible_deploy() {
 main() {
     show_banner
     det_release
+    require_root
     echo
 
 	# Parse command-line flags
