@@ -78,8 +78,11 @@ det_release() {
 	distro="unknown"
     fi
 
+    # Convert to lowercase
+    distro="${distro,,}"
+
     case "$distro" in
-	Ubuntu|ubuntu|Debian|debian|Kali|kali)
+	ubuntu|debian|kali)
 	    update_cmd="sudo apt update -y"
 	    upgrade_cmd="sudo apt upgrade -y"
 	    dist_upgrade_cmd="sudo apt dist-upgrade -y"
@@ -90,7 +93,7 @@ det_release() {
 	    purge_cmd="sudo apt purge -y"
 	    search_cmd="apt search"
 	    ;;
-	Fedora|fedora)
+	fedora)
 	    update_cmd="sudo dnf check-update"
             upgrade_cmd="sudo dnf upgrade -y"
             dist_upgrade_cmd="sudo dnf system-upgrade download --releasever=$(($(rpm -E %fedora)+1))"
@@ -101,7 +104,7 @@ det_release() {
             purge_cmd="sudo dnf remove -y"
             search_cmd="dnf search"
 	    ;;
-	CentOS|Centos|centOS|centos|RHEL|rhel)
+	centos|rhel)
 	    update_cmd="sudo yum check-update"
             upgrade_cmd="sudo yum update -y"
             dist_upgrade_cmd="unknown" # Manual upgrade for major versions
@@ -112,7 +115,7 @@ det_release() {
             purge_cmd="sudo yum remove -y"
             search_cmd="yum search"
 	    ;;
-	Arch|arch|Manjaro|manjaro)
+	arch|manjaro)
 	    update_cmd="sudo pacman -Syu"
             upgrade_cmd="sudo pacman -Syu"
             dist_upgrade_cmd="unknown" # Manual upgrade for major versions
@@ -123,7 +126,7 @@ det_release() {
             purge_cmd="sudo pacman -Rns --noconfirm"
             search_cmd="pacman -Ss"
 	    ;;
-	openSUSE*|opensuse*|SLES|sles)
+	opensuse*|sles)
 	    update_cmd="sudo zypper refresh"
             upgrade_cmd="sudo zypper update -y"
             dist_upgrade_cmd="sudo zypper dist-upgrade -y"
