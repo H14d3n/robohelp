@@ -375,7 +375,7 @@ playbook_actions() {
 
 # Ansible Fast Management [AFM]
 ansible_deploy() {
-    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core.${NC}"; exit 1 }
+    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core.${NC}"; exit 1; }
 
     echo
     echo "Welcome to the AFM - Ansible Fast Management"
