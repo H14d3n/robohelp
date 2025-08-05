@@ -327,7 +327,7 @@ run_ping() {
 }
 
 run_playbook() {
-    echo -e "${CYAN}What playbook would you like to run? [e.g. 1 remove]${NC}"
+    echo -e "${CYAN}Which playbook would you like to run? [e.g. 1 remove]${NC}"
     read -r input
 
     # Extract the first word as the index, and the rest as flags
@@ -404,7 +404,7 @@ live_fire() {
 
 # Ansible Fast Management [AFM]
 ansible_deploy() {
-    check_installed "ansible" || exit 1
+    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core.${NC}"; exit 1; }
 
     echo
     echo "Welcome to the AFM - Ansible Fast Management"
@@ -484,50 +484,23 @@ main() {
 	    -dur|--dist-upgrade)
 		dist_upgrade
 		;;
-	    -pi|--p-install)
-		shift
-		if [ $# -eq 0 ]; then
-		    echo -e "${RED}❌ No packages specified to install.${NC}"
-		    exit 1
-		fi
+        -pi|--p-install|-prm|--p-remove|-pp|--p-purge|-ps|--p-search)
+        action="$1"
+        shift
+        if [ $# -eq 0 ]; then
+            echo -e "${RED}❌ No packages specified to do ${action#--p-}.${NC}"
+            exit 1
+        fi
 
-		for package in "$@"; do
-		    package_install "$package"
-		done
-		;;
-	    -prm|--p-remove)
-		shift
-		if [ $# -eq 0 ]; then
-		    echo -e "${RED}❌ No packages specified to remove.${NC}"
-                    exit 1
-		fi
-
-		for package in "$@"; do
-		    package_remove "$package"
-		done
-		;;
-	    -pp|--p-purge)
-                shift
-                if [ $# -eq 0 ]; then
-                    echo -e "${RED}❌ No packages specified to purge.${NC}"
-                    exit 1
-                fi
-
-                for package in "$@"; do
-                    package_purge "$package"
-                done
-                ;;
-	    -ps|--p-search)
-		shift
-		if [ $# -eq 0 ]; then
-		    echo -e "${RED}❌ No packages specified to search.${NC}"
-		    exit 1
-		fi
-
-		for term in "$@"; do
-		    package_search "$term"
-		done
-		;;
+        for arg in "$@"; do
+            case "$action" in
+                -pi|--p-install) package_install "$arg" ;;
+                -prm|--p-remove) package_remove "$arg" ;;
+                -pp|--p-purge)   package_purge "$arg" ;;
+                -ps|--p-search)  package_search "$arg" ;;
+            esac
+        done
+        ;;
 	    -A|--ansible)
 		ansible_deploy
 		;;
