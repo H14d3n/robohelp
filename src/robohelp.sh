@@ -149,7 +149,7 @@ require_root() {
     if sudo -l -U "$USER" &>/dev/null; then
 	return 0
     else
-	echo -e "${RED} ❌ This script must be run as root or with sudo rights.${NC}"
+	echo -e "${RED} ❌ This tool must be run as root or with sudo rights.${NC}"
 	exit 1
     fi
 }
@@ -373,6 +373,35 @@ playbook_actions() {
     fi
 }
 
+live_fire() {
+    echo
+    echo -e "${CYAN}Which Command would you like to Live-Fire?${NC}"
+    read -r live_fire_command
+    echo
+
+    echo -e "${CYAN}Which hosts should be targeted?${NC}"
+    echo -e "${YELLOW}> [1] All${NC}"
+    echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
+    echo
+
+    read -r live_fire_target
+
+    case "${live_fire_target}" in
+	1)
+	    ansible -i hosts.yml all -m shell -a "${live_fire_command}"
+	    ;;
+	2)
+	    echo -e "${CYAN}Enter host or group (e.g. webservers, nagios):${NC}"
+	    read -r custom_target
+
+	    ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
+	    ;;
+	*)
+	    echo -e "${RED}Invalid option selected. Aborting.${NC}"
+	    ;;
+    esac
+}
+
 # Ansible Fast Management [AFM]
 ansible_deploy() {
     check_installed "ansible" || exit 1
@@ -383,9 +412,10 @@ ansible_deploy() {
     echo
     echo "> [1] Run Playbook (with Flags)"
     echo "> [2] Test Connection (Ping Hosts)"
-    echo "> [3] View Inventory"
-    echo "> [4] View Last Run Log"
-    echo "> [5] Exit"
+    echo "> [3] Live-Fire Command"
+    echo "> [4] View Inventory"
+    echo "> [5] View Last Run Log"
+    echo "> [6] Exit"
     echo
 
     read -r option
@@ -399,9 +429,12 @@ ansible_deploy() {
 		run_ping
 		;;
 	    3)
+		live_fire
+		;;
+	    4)
 		playbook_actions
 	        ;;
-	    4)
+	    5)
                 log_file="$HOME/.log/afmrun.log"
 
 		if [ -f "$log_file" ]; then
@@ -413,7 +446,7 @@ ansible_deploy() {
                     echo -e "${RED}🛑 No Ansible log found at $log_file.${NC}"
             	fi
                 ;;
-	    5)
+	    6)
 		exit 1
                 ;;
 	    *)
