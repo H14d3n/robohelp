@@ -328,39 +328,52 @@ run_ping() {
 
 run_playbook() {
     echo -e "${CYAN}Which playbook would you like to run? [e.g. 1 remove]${NC}"
-    read -r input
+    read -r selected_index additional_flags
+    echo
 
-    # Extract the first word as the index, and the rest as flags
-    selected_index=$(echo "$input" | awk '{print $1}')
-    additional_flags=$(echo "$input" | cut -d' ' -f2-)
+    if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
+	echo -e "${RED} Invalid playbook selection.${NC}"
+	return 1
+    fi
 
     echo -e "${CYAN}Do you use Ansible Vault? [Yes | No]${NC}"
     read -r ansible_vault_val
+    echo
 
-    if [ -n "$additional_flags" ]; then
-	case "${ansible_vault_val}" in
-	    Yes|yes)
-	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-vault-pass -v && log_actions "scs" || log_actions "fail"
+    case "${ansible_vault_val,,}" in
+	    yes)
+		vault_flag="--ask-vault-pass"
 	    	;;
-	    No|no)
-	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --extra-vars "action=$additional_flags" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
+	    no)
+		vault_flag="--ask-become-pass"
 		;;
 	    *)
-		echo -e "${RED}Invalid input - Specify if you use ansible vault${NC}"
+		echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
+		return 1
 		;;
- 	esac
+    esac
+
+    playbook="${playbooks[$selected_index]}"
+
+    # Only set extra_vars if flags are non-empty
+    if [ -n "$additional_flags" ];  then
+	extra_vars="--extra-vars \"action=$additional_flags\""
     else
-	case "${ansible_vault_val}" in
-	    Yes|yes)
-            	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-vault-pass -v && log_actions "scs" || log_actions "fail"
-	    	;;
-	    No|no)
-	    	ansible-playbook -i hosts.yml "${playbooks[$selected_index]}" --ask-become-pass -v && log_actions "scs" || log_actions "fail"
-	    	;;
-	    *)
-		echo -e "${RED}Invalid input - Specify if you use ansible vault${NC}"
-		;;
-	esac
+	extra_vars=""
+    fi
+
+    echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
+    echo -e "${CYAN}🚩 Flags: ${vault_flag} $extra_vars${NC}"
+    echo
+    echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
+    echo
+
+    sleep 5
+
+    if ansible-playbook -i hosts.yml "$playbook" $extra_vars $vault_flag -v; then
+	log_actions "scs"
+    else
+	log_actions "fail"
     fi
 }
 
@@ -447,7 +460,7 @@ ansible_deploy() {
             	fi
                 ;;
 	    6)
-		exit 1
+		exit 0
                 ;;
 	    *)
 		echo "Unsupported option"
