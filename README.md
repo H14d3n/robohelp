@@ -53,6 +53,7 @@ AFM is a built-in menu system for managing Ansible playbooks quickly and interac
 
 - **Run Ansible playbooks** (with or without extra flags)
 - **Test connection** to all hosts using Ansible ping
+- **Live-Fire** is used to run commands on specific hosts without the need of a playbook.
 - **View available playbooks** and inventory
 - **View the last run log** for troubleshooting and auditing
 
