@@ -1,15 +1,17 @@
 #!/bin/bash
 
 
-title='
-
-█▄▄▄▄ ████▄ ███   ████▄  ▄  █ ▄███▄   █    █ ▄▄
-█  ▄▀ █   █ █  █  █   █ █   █ █▀   ▀  █    █   █
-█▀▀▌  █   █ █ ▀ ▄ █   █ ██▀▀█ ██▄▄    █    █▀▀▀
-█  █  ▀████ █  ▄▀ ▀████ █   █ █▄   ▄▀ ███▄ █
-  █         ███            █  ▀███▀       ▀ █
- ▀                        ▀                  ▀
-'
+read -r -d '' title <<'EOF'
+┌──────────────────────────────────────────────────┐
+│		_	    _	       _	   │
+│     _ __ ___ | |__   ___ | |__   ___| |____      │
+│    | '__/ _ \| '_ \ / _ \| '_ \ / _ \ | '_ \     │
+│    | | | (_) | |_) | (_) | | | |  __/ | |_) |    │
+│    |_|  \___/|_.__/ \___/|_| |_|\___|_| .__/     │
+│                                       |_|        │
+│						   │
+└──────────────────────────────────────────────────┘
+EOF
 
 bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡀⠐⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -327,7 +329,8 @@ run_ping() {
 }
 
 run_playbook() {
-    echo -e "${CYAN}Which playbook would you like to run? [e.g. 1 remove]${NC}"
+    echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
+    echo -e "${CYAN}<----------------------------------------------------->${NC}"
     read -r selected_index additional_flags
     echo
 
@@ -336,7 +339,8 @@ run_playbook() {
 	return 1
     fi
 
-    echo -e "${CYAN}Do you use Ansible Vault? [Yes | No]${NC}"
+    echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
+    echo -e "${CYAN}<------------------------------------>${NC}"
     read -r ansible_vault_val
     echo
 
@@ -388,11 +392,13 @@ playbook_actions() {
 
 live_fire() {
     echo
-    echo -e "${CYAN}Which Command would you like to Live-Fire?${NC}"
+    echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
+    echo -e "${CYAN}<------------------------------------------>${NC}"
     read -r live_fire_command
     echo
 
-    echo -e "${CYAN}Which hosts should be targeted?${NC}"
+    echo -e "${CYAN} Which hosts should be targeted?${NC}"
+    echo -e "${CYAN}<------------------------------->${NC}"
     echo -e "${YELLOW}> [1] All${NC}"
     echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
     echo
@@ -404,7 +410,9 @@ live_fire() {
 	    ansible -i hosts.yml all -m shell -a "${live_fire_command}"
 	    ;;
 	2)
-	    echo -e "${CYAN}Enter host or group (e.g. webservers, nagios):${NC}"
+	    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
+	    echo -e "${CYAN}<---------------------------------------------->${NC}"
+	    echo
 	    read -r custom_target
 
 	    ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
@@ -420,15 +428,15 @@ ansible_deploy() {
     check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core.${NC}"; exit 1; }
 
     echo
-    echo "Welcome to the AFM - Ansible Fast Management"
-    echo "What would you like to do?"
+    echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
+    echo -e "${CYAN}<-------------------------------------------->${NC}"
     echo
-    echo "> [1] Run Playbook (with Flags)"
-    echo "> [2] Test Connection (Ping Hosts)"
-    echo "> [3] Live-Fire Command"
-    echo "> [4] View Inventory"
-    echo "> [5] View Last Run Log"
-    echo "> [6] Exit"
+    echo -e "${YELLOW}> [1] Run Playbook (with Flags)${NC}"
+    echo -e "${YELLOW}> [2] Test Connection (Ping Hosts)${NC}"
+    echo -e "${YELLOW}> [3] Live-Fire Command${NC}"
+    echo -e "${YELLOW}> [4] View Inventory${NC}"
+    echo -e "${YELLOW}> [5] View Last Run Log${NC}"
+    echo -e "${YELLOW}> [6] Exit${NC}"
     echo
 
     read -r option
@@ -538,7 +546,7 @@ main() {
 		;;
 	    *)
 		echo
-		echo "Unknown or no flag provided. Try -h for help."
+		echo -e "${RED} ❌ Unknown or no flag provided. Try -h for help.${NC}"
 		;;
 	esac
 }
