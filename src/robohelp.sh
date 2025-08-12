@@ -277,7 +277,7 @@ full_upgrade() {
 
 # Dev Automation
 mv_robohelp() {
-    sudo cp robohelp.sh /usr/local/bin/robohelp
+    sudo cp ~/clone/robohelp/src/robohelp.sh /usr/local/bin/robohelp && echo -e "${GREEN}👽 robohelp distributed${NC}" || "${RED}👹 robohelp distribution failed.${NC}"
 }
 
 find_playbook() {
@@ -504,6 +504,9 @@ main() {
 		;;
 	    -dur|--dist-upgrade)
 		dist_upgrade
+		;;
+	    -dx)
+		mv_robohelp
 		;;
         -pi|--p-install|-prm|--p-remove|-pp|--p-purge|-ps|--p-search)
         action="$1"
