@@ -117,7 +117,7 @@ det_release() {
             purge_cmd="sudo yum remove -y"
             search_cmd="yum search"
 	    ;;
-	arch|manjaro)
+	arch|manjarolinux)
 	    update_cmd="sudo pacman -Syu"
             upgrade_cmd="sudo pacman -Syu"
             dist_upgrade_cmd="unknown" # Manual upgrade for major versions
@@ -132,7 +132,7 @@ det_release() {
 	    update_cmd="sudo zypper refresh"
             upgrade_cmd="sudo zypper update -y"
             dist_upgrade_cmd="sudo zypper dist-upgrade -y"
-            autoremove_cmd="sudo zypper remove --clean-deps"
+            autoremove_cmd="sudo zypper clean -a"
             autoclean_cmd="sudo zypper clean"
 	    install_cmd="sudo zypper install -y"
 	    remove_cmd="sudo zypper remove -y"
@@ -425,7 +425,7 @@ live_fire() {
 
 # Ansible Fast Management [AFM]
 ansible_deploy() {
-    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core.${NC}"; exit 1; }
+    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; exit 1; }
 
     echo
     echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
