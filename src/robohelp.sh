@@ -203,7 +203,7 @@ dist_upgrade() {
 }
 
 package_autorm() {
-    echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+    echo -e "${CYAN}👁  Are you sure?\n🧹 Removing unnecessary packages...${NC}"
     $autoremove_cmd
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Autoremove completed successfully on $distro.${NC}"
@@ -357,11 +357,12 @@ run_playbook() {
 		;;
     esac
 
-    playbook="${playbooks[$selected_index]}"
+    playbook="$(basename "${playbooks[$selected_index]}")"
+    extra_vars=()
 
     # Only set extra_vars if flags are non-empty
     if [ -n "$additional_flags" ];  then
-	extra_vars="--extra-vars \"action=$additional_flags\""
+	extra_vars=(--extra-vars "action=$additional_flags")
     else
 	extra_vars=""
     fi
@@ -374,7 +375,7 @@ run_playbook() {
 
     sleep 5
 
-    if ansible-playbook -i hosts.yml "$playbook" $extra_vars $vault_flag -v; then
+    if ansible-playbook -i hosts.yml "$playbook" "${extra_vars[@]}" $vault_flag -v; then
 	log_actions "scs"
     else
 	log_actions "fail"
