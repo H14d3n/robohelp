@@ -363,12 +363,10 @@ run_playbook() {
     # Only set extra_vars if flags are non-empty
     if [ -n "$additional_flags" ];  then
 	extra_vars=(--extra-vars "action=$additional_flags")
-    else
-	extra_vars=""
     fi
 
     echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
-    echo -e "${CYAN}🚩 Flags: ${vault_flag} $extra_vars${NC}"
+    echo -e "${CYAN}🚩 Flags: ${vault_flag} ${extra_vars[*]}${NC}"
     echo
     echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
     echo
