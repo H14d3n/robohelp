@@ -301,18 +301,62 @@ ssh_config() {
 
     case "${ssh_option}" in
         1)
-            echo -e "${CYAN} Enter username, ip and port (e.g. user ip 22)${NC}"
-            echo -e "${CYAN}<--------------------------------------------->${NC}"
+            echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
+            echo -e "${CYAN}<---------------------------------------------->${NC}"
+            echo -e "${YELLOW}> [1] Yes${NC}"
+            echo -e "${YELLOW}> [2] No${NC}"
+            echo
+            read -r use_previous
             echo
 
-            read -r ssh_user ssh_host ssh_port
+            if [ "${use_previous}" = "1" ]; then
+                echo -e "${CYAN} Available SSH commands:${NC}"
+                echo -e "${CYAN}<----------------------->${NC}"
+                echo
 
-            ssh "${ssh_user}@${ssh_host}" -p "${ssh_port:-22}"
+                if find_ssh_commands; then
+                    echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
+                    echo -e "${CYAN}<------------------------------------------------->${NC}"
+                    read -r selected_index
+                    echo
+
+                    if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#ssh_commands[@]}" ]; then
+                        echo -e "${RED}Invalid SSH command selection.${NC}"
+                        return 1
+                    fi
+
+                    selected_command="${ssh_commands[$selected_index]}"
+                    echo -e "${CYAN}Reusing command: ssh ${selected_command}${NC}"
+                    echo
+                    ssh ${selected_command}
+                    return 0
+                else
+                    echo -e "${YELLOW}Falling back to manual entry...${NC}"
+                    echo
+                fi
+            fi
+
+            echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
+            echo -e "${CYAN}<------------------------------------------------->${NC}"
+            echo
+
+            read -r "ssh_user" "ssh_host" "ssh_port"
+
+            mkdir -p ~/.ssh
+            ssh_command="${ssh_user}@${ssh_host} -p ${ssh_port:-22}"
+
+            if ssh "${ssh_user}@${ssh_host}" -p "${ssh_port:-22}"; then
+                if ! grep -Fxq "$ssh_command" ~/.ssh/.robohelp_lsc.txt; then
+                    echo "$ssh_command" >> ~/.ssh/.robohelp_lsc.txt
+                fi
+            fi
+            return 0
             ;;
         2)
             echo -e "${CYAN} ⚙️  Generating SSH Key Pair...${NC}"
             echo -e "${CYAN}<----------------------------->${NC}"
             if [ -f ~/.ssh/id_rsa ]; then
+                echo
                 echo -e "${YELLOW}⚠️  SSH key already exists at ~/.ssh/id_rsa. Showing public key:${NC}"
                 cat ~/.ssh/id_rsa.pub
             else
@@ -320,11 +364,11 @@ ssh_config() {
 
                 echo -e "${GREEN}✅ SSH Key Pair generated successfully!${NC}"
                 echo -e "${CYAN} Public- and Private Key located at ~/.ssh/ ${NC}"
-            fi    
+            fi
             ;;
         3)
-            echo -e "${CYAN} Enter username, ip and port to copy key to (e.g. user ip 22):${NC}"
-            echo -e "${CYAN}<------------------------------------------------------------->${NC}"
+            echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
+            echo -e "${CYAN}<---------------------------------------------------------------->${NC}"
             echo
 
             read -r ssh_user ssh_host ssh_port
@@ -353,6 +397,27 @@ find_playbook() {
         dir_path=$(dirname "$playbook")
         file_name=$(basename "$playbook")
         printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
+    done
+}
+
+find_ssh_commands() {
+    if [ ! -f ~/.ssh/.robohelp_lsc.txt ]; then
+        echo -e "${RED}⚠️  No previous SSH commands found.${NC}"
+        echo
+        return 1
+    fi
+
+    mapfile -t ssh_commands < ~/.ssh/.robohelp_lsc.txt
+
+    if [ ${#ssh_commands[@]} -eq 0 ]; then
+        echo -e "${YELLOW}⚠️  No SSH commands found in history.${NC}"
+        return 1
+    fi
+
+    loop=-1
+    for command in "${ssh_commands[@]}"; do
+        ((loop++))
+        printf '[%d] ssh %s\n\n' "$loop" "$command"
     done
 }
 
