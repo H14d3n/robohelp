@@ -85,7 +85,7 @@ det_release() {
 
     case "$distro" in
 	ubuntu|debian|kali)
-	    update_cmd="sudo apt update -y"
+        update_cmd="sudo apt update"
 	    upgrade_cmd="sudo apt upgrade -y"
 	    dist_upgrade_cmd="sudo apt dist-upgrade -y"
 	    autoremove_cmd="sudo apt autoremove -y"
@@ -96,9 +96,9 @@ det_release() {
 	    search_cmd="apt search"
 	    ;;
 	fedora)
-	    update_cmd="sudo dnf check-update"
+        update_cmd="sudo dnf makecache -y"
         upgrade_cmd="sudo dnf upgrade -y"
-        dist_upgrade_cmd="sudo dnf system-upgrade download --releasever=$(($(rpm -E %fedora)+1))"
+        dist_upgrade_cmd="unknown" # Manual upgrade for major versions
         autoremove_cmd="sudo dnf autoremove -y"
         autoclean_cmd="sudo dnf clean all"
 	    install_cmd="sudo dnf install -y"
@@ -107,7 +107,7 @@ det_release() {
         search_cmd="dnf search"
 	    ;;
 	centos|rhel)
-	    update_cmd="sudo yum check-update"
+        update_cmd="sudo yum makecache -y"
         upgrade_cmd="sudo yum update -y"
         dist_upgrade_cmd="unknown" # Manual upgrade for major versions
         autoremove_cmd="sudo yum autoremove -y"
@@ -118,10 +118,10 @@ det_release() {
         search_cmd="yum search"
 	    ;;
 	arch|manjarolinux)
-	    update_cmd="sudo pacman -Syu"
+        update_cmd="sudo pacman -Sy"
         upgrade_cmd="sudo pacman -Syu"
         dist_upgrade_cmd="unknown" # Manual upgrade for major versions
-        autoremove_cmd="sudo pacman -Rns $(pacman -Qdtq)"
+        autoremove_cmd="sudo pacman -Rns"
         autoclean_cmd="sudo pacman -Sc"
 	    install_cmd="sudo pacman -S --noconfirm"
 	    remove_cmd="sudo pacman -R --noconfirm"
@@ -166,23 +166,27 @@ check_installed() {
 }
 
 package_update() {
-    echo -e "${CYAN}📦 Running APT Repository update...${NC}"
+    echo -e "${CYAN}📦 Updating package metadata...${NC}"
     $update_cmd
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ Updated repositories successfully on $distro.${NC}"
     else
-	    echo -e "${RED}❌ Failed to update repositories on $distro. Exit code: $? ${NC}"
+        echo -e "${RED}❌ Failed to update repositories on $distro. Exit code: $rc ${NC}"
     fi
+    return $rc
 }
 
 package_upgrade() {
     echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
     $upgrade_cmd
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ Installed updates successfully on $distro.${NC}"
     else
-        echo -e "${RED}❌ Failed to update packages on $distro. Exit code: $? ${NC}"
+        echo -e "${RED}❌ Failed to upgrade packages on $distro. Exit code: $rc ${NC}"
     fi
+    return $rc
 }
 
 dist_upgrade() {
@@ -195,31 +199,49 @@ dist_upgrade() {
 	    $dist_upgrade_cmd
     fi
 
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ Upgraded distribution successfully.${NC}"
     else
-        echo -e "${RED}❌ Failed to upgrade $distro. Exit code: $? ${NC}"
+        echo -e "${RED}❌ Failed to upgrade $distro. Exit code: $rc ${NC}"
     fi
+    return $rc
 }
 
 package_autorm() {
     echo -e "${CYAN}👁  Are you sure?\n🧹 Removing unnecessary packages...${NC}"
-    $autoremove_cmd
-    if [ $? -eq 0 ]; then
+    if [[ "$distro" == "arch" || "$distro" == "manjarolinux" ]]; then
+        # Compute orphans at runtime to avoid command-substitution at assignment time
+        orphans=$(pacman -Qdtq)
+        if [ -z "$orphans" ]; then
+            echo -e "${YELLOW}ℹ️  No orphaned packages found.${NC}"
+            return 0
+        fi
+        $autoremove_cmd $orphans
+        rc=$?
+    else
+        $autoremove_cmd
+        rc=$?
+    fi
+
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ Autoremove completed successfully on $distro.${NC}"
     else
-        echo -e "${RED}❌ Autoremove failed on $distro. Exit code: $? ${NC}"
+        echo -e "${RED}❌ Autoremove failed on $distro. Exit code: $rc ${NC}"
     fi
+    return $rc
 }
 
 package_autocls() {
     echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
     $autoclean_cmd
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ Autoclean completed successfully on $distro.${NC}"
     else
-        echo -e "${RED}❌ Autoclean failed on $distro. Exit code: $? ${NC}"
+        echo -e "${RED}❌ Autoclean failed on $distro. Exit code: $rc ${NC}"
     fi
+    return $rc
 }
 
 package_install() {
@@ -227,11 +249,13 @@ package_install() {
     echo
     echo -e "${CYAN}📦 Installing package: $package${NC}"
     $install_cmd "$package"
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
 	    echo -e "${GREEN}✅ $package installed successfully!${NC}"
     else
-	    echo -e "${RED}❌ Failed to install $package.${NC}"
+        echo -e "${RED}❌ Failed to install $package. Exit code: $rc${NC}"
     fi
+    return $rc
 }
 
 package_remove() {
@@ -239,11 +263,13 @@ package_remove() {
     echo
     echo -e "${CYAN}📦 Removing package: $package${NC}"
     $remove_cmd "$package"
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ $package removed successfully!${NC}"
     else
-        echo -e "${RED}❌ Failed to remove $package.${NC}"
+        echo -e "${RED}❌ Failed to remove $package. Exit code: $rc${NC}"
     fi
+    return $rc
 }
 
 package_purge() {
@@ -251,11 +277,13 @@ package_purge() {
     echo
     echo -e "${CYAN}📦 Purging package: $package${NC}"
     $purge_cmd "$package"
-    if [ $? -eq 0 ]; then
+    rc=$?
+    if [ $rc -eq 0 ]; then
         echo -e "${GREEN}✅ $package purged successfully!${NC}"
     else
-        echo -e "${RED}❌ Failed to purge $package.${NC}"
+        echo -e "${RED}❌ Failed to purge $package. Exit code: $rc${NC}"
     fi
+    return $rc
 }
 
 package_search() {
@@ -272,7 +300,7 @@ full_upgrade() {
     package_autorm && \
     package_autocls && \
     echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" || \
-    echo -e "${GREEN}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
+    echo -e "${RED}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
 }
 
 # Dev Automation
@@ -373,7 +401,7 @@ ssh_config() {
 
             read -r ssh_user ssh_host ssh_port
 
-            ssh-copy-id "${ssh_user}@${ssh_host}" -p "${ssh_port:-22}"
+            ssh-copy-id -p "${ssh_port:-22}" "${ssh_user}@${ssh_host}"
             ;;
         4)
             echo -e "${CYAN} Opening SSH config file...${NC}"
@@ -419,6 +447,27 @@ find_ssh_commands() {
         ((loop++))
         printf '[%d] ssh %s\n\n' "$loop" "$command"
     done
+}
+
+view_inventory() {
+    local inv
+    if [ -f hosts.yml ]; then
+        inv="hosts.yml"
+    elif ls hosts.* >/dev/null 2>&1; then
+        # fallback to any hosts.* file, pick the first
+        inv=$(ls hosts.* 2>/dev/null | head -n1)
+    else
+        echo -e "${RED}🛑 No inventory file found (expected hosts.yml).${NC}"
+        return 1
+    fi
+    echo
+    echo -e "${YELLOW}📄 Showing Ansible inventory: $inv${NC}"
+    echo
+    if [ -n "$PAGER" ]; then
+        "$PAGER" "$inv" 2>/dev/null || cat "$inv"
+    else
+        cat "$inv"
+    fi
 }
 
 
@@ -579,9 +628,9 @@ ansible_deploy() {
 	    	    ;;
 	        3)
 	    	    live_fire
-	    	    ;;
+                ;;
 	        4)
-	    	    playbook_actions
+    	        view_inventory
 	            ;;
 	        5)
                 log_file="$HOME/.log/afmrun.log"
@@ -610,30 +659,36 @@ ansible_deploy() {
 main() {
     show_banner
     det_release
-    require_root
     echo
 
 	# Parse command-line flags
 	case "$1" in
 	    -pud|--p-update)
+		    require_root
 		    package_update
 		    ;;
 	    -pur|--p-upgrade)
+		    require_root
 		    package_upgrade
 		    ;;
 	    -arm|--p-autoremove)
+		    require_root
 		    package_autorm
 		    ;;
 	    -acl|--p-autoclean)
+		    require_root
 		    package_autocls
 		    ;;
 	    -fu|--full-upgrade)
+		    require_root
 		    full_upgrade
 		    ;;
 	    -dur|--dist-upgrade)
+		    require_root
 		    dist_upgrade
 		    ;;
 	    -dx)
+		    require_root
 		    mv_robohelp
 		    ;;
         -ssh|--ssh-settings)
@@ -643,9 +698,23 @@ main() {
             action="$1"
             shift
             if [ $# -eq 0 ]; then
-                echo -e "${RED}❌ No packages specified to do ${action#--p-}.${NC}"
+                case "$action" in
+                    -pi|--p-install) human_action="install" ;;
+                    -prm|--p-remove) human_action="remove" ;;
+                    -pp|--p-purge)   human_action="purge" ;;
+                    -ps|--p-search)  human_action="search" ;;
+                    *) human_action="operate" ;;
+                esac
+                echo -e "${RED}❌ No packages specified to ${human_action}.${NC}"
                 exit 1
             fi
+
+            # Require root only for install, remove, and purge operations
+            case "$action" in
+                -pi|--p-install|-prm|--p-remove|-pp|--p-purge)
+                    require_root
+                    ;;
+            esac
 
             for arg in "$@"; do
                 case "$action" in
