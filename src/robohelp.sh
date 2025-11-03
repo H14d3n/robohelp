@@ -62,6 +62,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 CYAN='\033[0;36m'
+INVERT='\033[7m'
 NC='\033[0m' # No Color - Always put in the end of every message
 
 # Function to print banner
@@ -305,7 +306,11 @@ full_upgrade() {
 
 # Dev Automation
 mv_robohelp() {
-    sudo cp ~/clone/robohelp/src/robohelp.sh /usr/local/bin/robohelp && echo -e "${GREEN}👽 robohelp distributed${NC}" || "${RED}👹 robohelp distribution failed.${NC}"
+    if sudo cp ~/clone/robohelp/src/robohelp.sh /usr/local/bin/robohelp; then
+      echo -e "${GREEN}👽 robohelp distributed${NC}"
+    else
+      echo -e "${RED}👹 robohelp distribution failed.${NC}"
+    fi
 }
 
 ssh_config() {
@@ -315,7 +320,7 @@ ssh_config() {
     fi
 
     echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
-    echo -e "${CYAN}<---------------------------------->${NC}"
+    echo -e "${CYAN}<──────────────────────────────────>${NC}"
     echo
     echo -e "${YELLOW}> [1] Establish SSH connection${NC}"
     echo -e "${YELLOW}> [2] Generate SSH Key Pair${NC}"
@@ -330,7 +335,7 @@ ssh_config() {
     case "${ssh_option}" in
         1)
             echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
-            echo -e "${CYAN}<---------------------------------------------->${NC}"
+            echo -e "${CYAN}<────────────────────────────────────────────>${NC}"
             echo -e "${YELLOW}> [1] Yes${NC}"
             echo -e "${YELLOW}> [2] No${NC}"
             echo
@@ -339,12 +344,12 @@ ssh_config() {
 
             if [ "${use_previous}" = "1" ]; then
                 echo -e "${CYAN} Available SSH commands:${NC}"
-                echo -e "${CYAN}<----------------------->${NC}"
+                echo -e "${CYAN}<──────────────────────>${NC}"
                 echo
 
                 if find_ssh_commands; then
                     echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
-                    echo -e "${CYAN}<------------------------------------------------->${NC}"
+                    echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
                     read -r selected_index
                     echo
 
@@ -365,7 +370,7 @@ ssh_config() {
             fi
 
             echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
-            echo -e "${CYAN}<------------------------------------------------->${NC}"
+            echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
             echo
 
             read -r "ssh_user" "ssh_host" "ssh_port"
@@ -382,7 +387,7 @@ ssh_config() {
             ;;
         2)
             echo -e "${CYAN} ⚙️  Generating SSH Key Pair...${NC}"
-            echo -e "${CYAN}<----------------------------->${NC}"
+            echo -e "${CYAN}<──────────────────────────────>${NC}"
             if [ -f ~/.ssh/id_rsa ]; then
                 echo
                 echo -e "${YELLOW}⚠️  SSH key already exists at ~/.ssh/id_rsa. Showing public key:${NC}"
@@ -396,7 +401,7 @@ ssh_config() {
             ;;
         3)
             echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
-            echo -e "${CYAN}<---------------------------------------------------------------->${NC}"
+            echo -e "${CYAN}<────────────────────────────────────────────────────────────────>${NC}"
             echo
 
             read -r ssh_user ssh_host ssh_port
@@ -504,12 +509,16 @@ log_actions() {
 
 
 run_ping() {
-    ansible all -i hosts.* -m ping && log_actions "ping" || log_actions "pingfail"
+    if ansible all -i hosts.* -m ping; then
+      log_actions "ping"
+    else
+      log_actions "pingfail"
+    fi
 }
 
 run_playbook() {
     echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
-    echo -e "${CYAN}<----------------------------------------------------->${NC}"
+    echo -e "${CYAN}<────────────────────────────────────────────────────>${NC}"
     read -r selected_index additional_flags
     echo
 
@@ -519,7 +528,7 @@ run_playbook() {
     fi
 
     echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
-    echo -e "${CYAN}<------------------------------------>${NC}"
+    echo -e "${CYAN}<───────────────────────────────────>${NC}"
     read -r ansible_vault_val
     echo
 
@@ -570,12 +579,12 @@ playbook_actions() {
 live_fire() {
     echo
     echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
-    echo -e "${CYAN}<------------------------------------------>${NC}"
+    echo -e "${CYAN}<─────────────────────────────────────────>${NC}"
     read -r live_fire_command
     echo
 
     echo -e "${CYAN} Which hosts should be targeted?${NC}"
-    echo -e "${CYAN}<------------------------------->${NC}"
+    echo -e "${CYAN}<──────────────────────────────>${NC}"
     echo -e "${YELLOW}> [1] All${NC}"
     echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
     echo
@@ -588,7 +597,7 @@ live_fire() {
 	    ;;
 	2)
 	    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
-	    echo -e "${CYAN}<---------------------------------------------->${NC}"
+	    echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
 	    echo
 	    read -r custom_target
 
@@ -606,7 +615,7 @@ ansible_deploy() {
 
     echo
     echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
-    echo -e "${CYAN}<-------------------------------------------->${NC}"
+    echo -e "${CYAN}<───────────────────────────────────────────>${NC}"
     echo
     echo -e "${YELLOW}> [1] Run Playbook (with Flags)${NC}"
     echo -e "${YELLOW}> [2] Test Connection (Ping Hosts)${NC}"
