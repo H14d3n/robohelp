@@ -22,6 +22,8 @@
 - 📚 Easy to use with help command
 - ⚡ **AFM (Ansible Fast Management):** Integrated menu for running Ansible playbooks, pinging hosts, viewing inventory, and checking logs
 - 📝 Logging of Ansible playbook runs and actions
+- 🔁 **Fast SSH:** Save SSH Connections, distribute keys and configure!
+
 
 
 
@@ -30,21 +32,22 @@
 
 ```
 Usage: robohelp [option]
-    -pud, --p-update	    [1] Update Package Repositories
-    -pur, --p-upgrade 	    [1] Upgrade installed packages
-    -arm, --p-autoremove    [1] Remove unnecessary packages
-    -acl, --p-autoclean	    [1] Clean up local repository
-    -fu,  --full-upgrade	Run full system upgrade with options from [1]
+        -pud, --p-update        [1] Update Package Repositories
+        -pur, --p-upgrade       [1] Upgrade installed packages
+        -arm, --p-autoremove    [1] Remove unnecessary packages
+        -acl, --p-autoclean     [1] Clean up local repository
+        -fu,  --full-upgrade    Run full system upgrade with options from [1]
 
-    -dur, --dist-upgrade	Run distribution update for system
+        -dur, --dist-upgrade    Run distribution update for system
+        -ssh, --ssh-settings    Setup SSH Connections, distribute keys and config
 
-    -pi,  --p-install 	<name>	Install package from repository
-    -ps,  --p-search 	<name>	Search package in repository
-    -prm, --p-remove	<name>	Remove package from system
-    -pp,  --p-purge		<name>	Remove package with all its dependencies
+        -pi,  --p-install       <name>  Install package from repository
+        -ps,  --p-search        <name>  Search package in repository
+        -prm, --p-remove        <name>  Remove package from system
+        -pp,  --p-purge         <name>  Remove package with all its dependencies
 
-    -A,   --ansible		Ansible Management
-    -h,   --help		Show this help message
+        -A,   --ansible         Ansible Fast Management
+        -h,   --help            Show this help message
 ```
 
 ## 🤖 What is AFM (Ansible Fast Management)?
