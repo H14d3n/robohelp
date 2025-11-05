@@ -167,7 +167,10 @@ check_installed() {
 }
 
 package_update() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Updating package metadata...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $update_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -175,11 +178,15 @@ package_update() {
     else
         echo -e "${RED}❌ Failed to update repositories on $distro. Exit code: $rc ${NC}"
     fi
+    echo
     return $rc
 }
 
 package_upgrade() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $upgrade_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -187,14 +194,19 @@ package_upgrade() {
     else
         echo -e "${RED}❌ Failed to upgrade packages on $distro. Exit code: $rc ${NC}"
     fi
+    echo
     return $rc
 }
 
 dist_upgrade() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Upgrading distribution and dependencies...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     if [ "$dist_upgrade_cmd" = "unknown" ]; then
 	    echo -e "${BLUE}🛑 This command is not available for your distribution${NC}"
+	    echo
 	    return 1
     else
 	    $dist_upgrade_cmd
@@ -206,16 +218,22 @@ dist_upgrade() {
     else
         echo -e "${RED}❌ Failed to upgrade $distro. Exit code: $rc ${NC}"
     fi
+    echo
     return $rc
 }
 
 package_autorm() {
-    echo -e "${CYAN}👁  Are you sure?\n🧹 Removing unnecessary packages...${NC}"
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}👁  Are you sure?${NC}"
+    echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     if [[ "$distro" == "arch" || "$distro" == "manjarolinux" ]]; then
         # Compute orphans at runtime to avoid command-substitution at assignment time
         orphans=$(pacman -Qdtq)
         if [ -z "$orphans" ]; then
             echo -e "${YELLOW}ℹ️  No orphaned packages found.${NC}"
+            echo
             return 0
         fi
         $autoremove_cmd $orphans
@@ -230,11 +248,15 @@ package_autorm() {
     else
         echo -e "${RED}❌ Autoremove failed on $distro. Exit code: $rc ${NC}"
     fi
+    echo
     return $rc
 }
 
 package_autocls() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $autoclean_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -242,13 +264,16 @@ package_autocls() {
     else
         echo -e "${RED}❌ Autoclean failed on $distro. Exit code: $rc ${NC}"
     fi
+    echo
     return $rc
 }
 
 package_install() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Installing package: $package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📦 Installing package: ${YELLOW}$package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $install_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -262,7 +287,9 @@ package_install() {
 package_remove() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Removing package: $package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📦 Removing package: ${YELLOW}$package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $remove_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -276,7 +303,9 @@ package_remove() {
 package_purge() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Purging package: $package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📦 Purging package: ${YELLOW}$package${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $purge_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -289,19 +318,29 @@ package_purge() {
 
 package_search() {
     local term="$1"
-    echo -e "${BLUE}🔍 Searching for: $term${NC}"
+    echo
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${BLUE}🔍 Searching for: ${YELLOW}$term${NC}"
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $search_cmd "$term"
+    echo
 }
 
 
 full_upgrade() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     package_update && \
     package_upgrade && \
     package_autorm && \
     package_autocls && \
-    echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" || \
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" && \
+    echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" && \
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" || \
     echo -e "${RED}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
+    echo
 }
 
 # Dev Automation
@@ -315,18 +354,22 @@ mv_robohelp() {
 
 ssh_config() {
     if ! check_installed "ssh" || ! check_installed "ssh-keygen"; then
+        echo
         echo -e "${RED}❌ SSH or ssh-keygen is not installed. Install with robohelp -pi openssh-client${NC}"
+        echo
         return 1
     fi
 
-    echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
-    echo -e "${CYAN}<──────────────────────────────────>${NC}"
     echo
-    echo -e "${YELLOW}> [1] Establish SSH connection${NC}"
-    echo -e "${YELLOW}> [2] Generate SSH Key Pair${NC}"
-    echo -e "${YELLOW}> [3] Copy SSH Key to Remote Host${NC}"
-    echo -e "${YELLOW}> [4] Edit SSH Config File${NC}"
-    echo -e "${YELLOW}> [5] Exit${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
+    echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
+    echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
+    echo -e "${YELLOW}  [3] Copy SSH Key to Remote Host${NC}"
+    echo -e "${YELLOW}  [4] Edit SSH Config File${NC}"
+    echo -e "${YELLOW}  [5] Exit${NC}"
     echo
 
     read -r ssh_option
@@ -335,7 +378,7 @@ ssh_config() {
     case "${ssh_option}" in
         1)
             echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
-            echo -e "${CYAN}<────────────────────────────────────────────>${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
             echo -e "${YELLOW}> [1] Yes${NC}"
             echo -e "${YELLOW}> [2] No${NC}"
             echo
@@ -349,7 +392,7 @@ ssh_config() {
 
                 if find_ssh_commands; then
                     echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
-                    echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
+                    echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
                     read -r selected_index
                     echo
 
@@ -370,7 +413,7 @@ ssh_config() {
             fi
 
             echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
-            echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
             echo
 
             read -r "ssh_user" "ssh_host" "ssh_port"
@@ -387,7 +430,7 @@ ssh_config() {
             ;;
         2)
             echo -e "${CYAN} ⚙️  Generating SSH Key Pair...${NC}"
-            echo -e "${CYAN}<──────────────────────────────>${NC}"
+            echo -e "${CYAN}<───────────────────────────────>${NC}"
             if [ -f ~/.ssh/id_rsa ]; then
                 echo
                 echo -e "${YELLOW}⚠️  SSH key already exists at ~/.ssh/id_rsa. Showing public key:${NC}"
@@ -401,7 +444,7 @@ ssh_config() {
             ;;
         3)
             echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
-            echo -e "${CYAN}<────────────────────────────────────────────────────────────────>${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
             echo
 
             read -r ssh_user ssh_host ssh_port
@@ -518,7 +561,7 @@ run_ping() {
 
 run_playbook() {
     echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
-    echo -e "${CYAN}<────────────────────────────────────────────────────>${NC}"
+    echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
     read -r selected_index additional_flags
     echo
 
@@ -528,7 +571,7 @@ run_playbook() {
     fi
 
     echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
-    echo -e "${CYAN}<───────────────────────────────────>${NC}"
+    echo -e "${CYAN}<────────────────────────────────────>${NC}"
     read -r ansible_vault_val
     echo
 
@@ -579,12 +622,12 @@ playbook_actions() {
 live_fire() {
     echo
     echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
-    echo -e "${CYAN}<─────────────────────────────────────────>${NC}"
+    echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
     read -r live_fire_command
     echo
 
     echo -e "${CYAN} Which hosts should be targeted?${NC}"
-    echo -e "${CYAN}<──────────────────────────────>${NC}"
+    echo -e "${CYAN}<───────────────────────────────>${NC}"
     echo -e "${YELLOW}> [1] All${NC}"
     echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
     echo
@@ -597,7 +640,7 @@ live_fire() {
 	    ;;
 	2)
 	    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
-	    echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
+	    echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
 	    echo
 	    read -r custom_target
 
@@ -611,18 +654,19 @@ live_fire() {
 
 # Ansible Fast Management [AFM]
 ansible_deploy() {
-    check_installed "ansible" ||  { echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; exit 1; }
+    check_installed "ansible" ||  { echo; echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; echo; exit 1; }
 
     echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
-    echo -e "${CYAN}<───────────────────────────────────────────>${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo
-    echo -e "${YELLOW}> [1] Run Playbook (with Flags)${NC}"
-    echo -e "${YELLOW}> [2] Test Connection (Ping Hosts)${NC}"
-    echo -e "${YELLOW}> [3] Live-Fire Command${NC}"
-    echo -e "${YELLOW}> [4] View Inventory${NC}"
-    echo -e "${YELLOW}> [5] View Last Run Log${NC}"
-    echo -e "${YELLOW}> [6] Exit${NC}"
+    echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
+    echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"
+    echo -e "${YELLOW}  [3] Live-Fire Command${NC}"
+    echo -e "${YELLOW}  [4] View Inventory${NC}"
+    echo -e "${YELLOW}  [5] View Last Run Log${NC}"
+    echo -e "${YELLOW}  [6] Exit${NC}"
     echo
 
     read -r option
