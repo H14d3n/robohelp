@@ -43,7 +43,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
 # Variable Declaration
-VERSION="1.0.0"
+VERSION="1.0.1"
 GITHUB_REPO="h14d3n/robohelp"
 GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
 INSTALL_PATH="/usr/local/bin/robohelp"
@@ -78,9 +78,9 @@ show_banner() {
 # Function to get remote version from GitHub
 get_remote_version() {
     if command -v curl &>/dev/null; then
-        remote_version=$(curl -s "$GITHUB_RAW_URL" | grep -m1 '^VERSION=' | cut -d'"' -f2)
+        remote_version=$(curl -s "$GITHUB_RAW_URL" | sed -n 's/^VERSION="\(.*\)"/\1/p' | head -1)
     elif command -v wget &>/dev/null; then
-        remote_version=$(wget -qO- "$GITHUB_RAW_URL" | grep -m1 '^VERSION=' | cut -d'"' -f2)
+        remote_version=$(wget -qO- "$GITHUB_RAW_URL" | sed -n 's/^VERSION="\(.*\)"/\1/p' | head -1)
     else
         echo ""
         return 1
