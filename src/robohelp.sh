@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 read -r -d '' title <<'EOF'
 ┌──────────────────────────────────────────────────┐
 │		_	    _	       _	   │
@@ -44,6 +43,10 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
 # Variable Declaration
+VERSION="1.0.0"
+GITHUB_REPO="h14d3n/robohelp"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
+INSTALL_PATH="/usr/local/bin/robohelp"
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
 install_cmd=""
@@ -69,6 +72,79 @@ NC='\033[0m' # No Color - Always put in the end of every message
 show_banner() {
     echo "$title"
     echo "$bb8"
+    echo -e "${CYAN}Version: $VERSION${NC}"
+}
+
+# Function to get remote version from GitHub
+get_remote_version() {
+    if command -v curl &>/dev/null; then
+        remote_version=$(curl -s "$GITHUB_RAW_URL" | grep -m1 '^VERSION=' | cut -d'"' -f2)
+    elif command -v wget &>/dev/null; then
+        remote_version=$(wget -qO- "$GITHUB_RAW_URL" | grep -m1 '^VERSION=' | cut -d'"' -f2)
+    else
+        echo ""
+        return 1
+    fi
+    echo "$remote_version"
+}
+
+# Function to check and perform auto-update
+check_and_update() {
+    # Skip update check if no internet tool is available
+    if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
+        return 0
+    fi
+
+    echo -e "${CYAN}🔍 Checking for updates...${NC}"
+    
+    remote_version=$(get_remote_version)
+    
+    # If we couldn't fetch the remote version, skip silently
+    if [ -z "$remote_version" ]; then
+        echo -e "${YELLOW}⚠️  Could not check for updates (no connection to GitHub)${NC}"
+        echo
+        return 0
+    fi
+    
+    if [ "$VERSION" != "$remote_version" ]; then
+        echo -e "${YELLOW}📢 New version available: $remote_version (current: $VERSION)${NC}"
+        echo -e "${CYAN}🔄 Updating robohelp...${NC}"
+        
+        # Create temporary file
+        temp_file=$(mktemp)
+        
+        # Download new version
+        if command -v curl &>/dev/null; then
+            curl -s "$GITHUB_RAW_URL" -o "$temp_file"
+        else
+            wget -qO "$temp_file" "$GITHUB_RAW_URL"
+        fi
+        
+        if [ $? -eq 0 ] && [ -s "$temp_file" ]; then
+            # Make it executable
+            chmod +x "$temp_file"
+            
+            # Move to install location (requires sudo)
+            if sudo cp "$temp_file" "$INSTALL_PATH"; then
+                echo -e "${GREEN}✅ Successfully updated to version $remote_version!${NC}"
+                echo -e "${CYAN}🔄 Restarting with new version...${NC}"
+                echo
+                rm -f "$temp_file"
+                # Re-execute with the same arguments
+                exec "$INSTALL_PATH" "$@"
+            else
+                echo -e "${RED}❌ Failed to install update. Please run with sudo or manually update.${NC}"
+                rm -f "$temp_file"
+            fi
+        else
+            echo -e "${RED}❌ Failed to download update.${NC}"
+            rm -f "$temp_file"
+        fi
+        echo
+    else
+        echo -e "${GREEN}✅ You are running the latest version ($VERSION)${NC}"
+        echo
+    fi
 }
 
 # Function to determine distro and set commands
@@ -713,6 +789,9 @@ main() {
     show_banner
     det_release
     echo
+    
+    # Check for updates (pass all arguments to handle re-execution)
+    check_and_update "$@"
 
 	# Parse command-line flags
 	case "$1" in
@@ -800,6 +879,9 @@ main() {
 		    echo
 		    echo "	-A,   --ansible		Ansible Fast Management"
 		    echo "	-h,   --help		Show this help message"
+		    echo
+		    echo "Note: robohelp automatically checks for updates on GitHub at startup."
+		    echo "Current version: $VERSION"
 		    ;;
 	    *)
 		    echo
