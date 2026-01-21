@@ -254,6 +254,89 @@ check_installed() {
     fi
 }
 
+package_management() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}📦 Package Management${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
+    echo -e "${YELLOW}  [1] Update Package Repositories${NC}"
+    echo -e "${YELLOW}  [2] Upgrade Installed Packages${NC}"
+    echo -e "${YELLOW}  [3] Full System Upgrade${NC}"
+    echo -e "${YELLOW}  [4] Distribution Upgrade${NC}"
+    echo -e "${YELLOW}  [5] Remove Unnecessary Packages${NC}"
+    echo -e "${YELLOW}  [6] Clean Local Repository${NC}"
+    echo -e "${YELLOW}  [7] Install Package${NC}"
+    echo -e "${YELLOW}  [8] Remove Package${NC}"
+    echo -e "${YELLOW}  [9] Purge Package${NC}"
+    echo -e "${YELLOW}  [10] Search Package${NC}"
+    echo -e "${YELLOW}  [11] Exit${NC}"
+    echo
+
+    read -r pkg_option
+
+    case "${pkg_option}" in
+        1)
+            package_update
+            ;;
+        2)
+            package_upgrade
+            ;;
+        3)
+            full_upgrade
+            ;;
+        4)
+            dist_upgrade
+            ;;
+        5)
+            package_autorm
+            ;;
+        6)
+            package_autocls
+            ;;
+        7)
+            echo
+            echo -e "${CYAN}Enter package name(s) to install (space-separated):${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+            read -r packages
+            for pkg in $packages; do
+                package_install "$pkg"
+            done
+            ;;
+        8)
+            echo
+            echo -e "${CYAN}Enter package name(s) to remove (space-separated):${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+            read -r packages
+            for pkg in $packages; do
+                package_remove "$pkg"
+            done
+            ;;
+        9)
+            echo
+            echo -e "${CYAN}Enter package name(s) to purge (space-separated):${NC}"
+            echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
+            read -r packages
+            for pkg in $packages; do
+                package_purge "$pkg"
+            done
+            ;;
+        10)
+            echo
+            echo -e "${CYAN}Enter search term:${NC}"
+            echo -e "${CYAN}<─────────────────>${NC}"
+            read -r term
+            package_search "$term"
+            ;;
+        11)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            ;;
+    esac
+}
+
 package_update() {
     echo
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -438,6 +521,39 @@ mv_robohelp() {
     else
       echo -e "${RED}👹 robohelp distribution failed.${NC}"
     fi
+}
+
+system_config() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}⚙️  System Configuration${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
+    echo -e "${YELLOW}  [1] SSH Configuration${NC}"
+    echo -e "${YELLOW}  [2] System Health Check${NC}"
+    echo -e "${YELLOW}  [3] Network Diagnostics${NC}"
+    echo -e "${YELLOW}  [4] Exit${NC}"
+    echo
+
+    read -r sys_option
+
+    case "${sys_option}" in
+        1)
+            ssh_config
+            ;;
+        2)
+            health_check
+            ;;
+        3)
+            network_diagnostics
+            ;;
+        4)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            ;;
+    esac
 }
 
 ssh_config() {
@@ -882,6 +998,236 @@ health_check() {
     echo
 }
 
+network_diagnostics() {
+
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN} Welcome to Network Diagnostics${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
+    echo -e "${YELLOW}  [1] DNS Lookup${NC}"
+    echo -e "${YELLOW}  [2] Traceroute/Ping utilities${NC}"
+    echo -e "${YELLOW}  [3] Network interface info${NC}"
+    echo -e "${YELLOW}  [4] Bandwidth monitoring${NC}"
+    echo -e "${YELLOW}  [5] Firewall status (ufw/iptables)${NC}"
+    echo -e "${YELLOW}  [6] Active connections${NC}"
+    echo -e "${YELLOW}  [7] Exit${NC}"
+
+    dns_lookup() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔍 DNS Lookup${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
+        read -r domain
+        
+        if command -v dig &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using dig:${NC}"
+            dig "$domain"
+        elif command -v nslookup &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using nslookup:${NC}"
+            nslookup "$domain"
+        elif command -v host &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using host:${NC}"
+            host "$domain"
+        else
+            echo -e "${RED}❌ No DNS tools available. Install dig, nslookup, or host.${NC}"
+        fi
+        echo
+    }
+
+    traceroute_ping() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🛰️  Traceroute/Ping Utilities${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Ping${NC}"
+        echo -e "${YELLOW}  [2] Traceroute${NC}"
+        echo
+        read -r trace_option
+        
+        echo -e "${YELLOW}Enter target host/IP:${NC}"
+        read -r target
+        echo
+        
+        case "${trace_option}" in
+            1)
+                if command -v ping &>/dev/null; then
+                    echo -e "${CYAN}Pinging $target (Ctrl+C to stop)...${NC}"
+                    ping -c 4 "$target"
+                else
+                    echo -e "${RED}❌ ping command not found${NC}"
+                fi
+                ;;
+            2)
+                if command -v traceroute &>/dev/null; then
+                    echo -e "${CYAN}Tracing route to $target...${NC}"
+                    traceroute "$target"
+                elif command -v tracepath &>/dev/null; then
+                    echo -e "${CYAN}Tracing route to $target...${NC}"
+                    tracepath "$target"
+                else
+                    echo -e "${RED}❌ traceroute/tracepath not found${NC}"
+                fi
+                ;;
+            *)
+                echo -e "${RED}Invalid option${NC}"
+                ;;
+        esac
+        echo
+    }
+
+    network_info() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🌐 Network Interface Information${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ip &>/dev/null; then
+            echo -e "${YELLOW}IP Addresses:${NC}"
+            ip -br addr show
+            echo
+            echo -e "${YELLOW}Routing Table:${NC}"
+            ip route
+        elif command -v ifconfig &>/dev/null; then
+            echo -e "${YELLOW}Network Interfaces:${NC}"
+            ifconfig
+            echo
+            echo -e "${YELLOW}Routing Table:${NC}"
+            route -n
+        else
+            echo -e "${RED}❌ No network tools available (ip or ifconfig)${NC}"
+        fi
+        echo
+    }
+
+    bandwidth_monitor() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📊 Bandwidth Monitoring${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v iftop &>/dev/null; then
+            echo -e "${CYAN}Starting iftop (requires sudo, Ctrl+C to quit)...${NC}"
+            echo
+            sudo iftop
+        elif command -v nethogs &>/dev/null; then
+            echo -e "${CYAN}Starting nethogs (requires sudo, Ctrl+C to quit)...${NC}"
+            echo
+            sudo nethogs
+        elif command -v vnstat &>/dev/null; then
+            echo -e "${CYAN}Network statistics:${NC}"
+            vnstat
+        else
+            echo -e "${YELLOW}⚠️  No bandwidth monitoring tools found.${NC}"
+            echo -e "${CYAN}Install one of: iftop, nethogs, vnstat${NC}"
+            echo
+            echo -e "${YELLOW}Showing basic network statistics:${NC}"
+            if command -v netstat &>/dev/null; then
+                netstat -i
+            elif [ -f /proc/net/dev ]; then
+                cat /proc/net/dev
+            fi
+        fi
+        echo
+    }
+
+    firewall_status() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔥 Firewall Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ufw &>/dev/null; then
+            echo -e "${YELLOW}UFW Status:${NC}"
+            sudo ufw status verbose
+            echo
+        fi
+        
+        if command -v iptables &>/dev/null; then
+            echo -e "${YELLOW}iptables Rules:${NC}"
+            sudo iptables -L -n -v --line-numbers
+            echo
+        fi
+        
+        if command -v firewall-cmd &>/dev/null; then
+            echo -e "${YELLOW}Firewalld Status:${NC}"
+            sudo firewall-cmd --list-all
+            echo
+        fi
+        
+        if ! command -v ufw &>/dev/null && ! command -v iptables &>/dev/null && ! command -v firewall-cmd &>/dev/null; then
+            echo -e "${YELLOW}⚠️  No firewall tools detected${NC}"
+        fi
+        echo
+    }
+
+    active_connections() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔌 Active Network Connections${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ss &>/dev/null; then
+            echo -e "${YELLOW}Listening ports:${NC}"
+            ss -tulpn
+            echo
+            echo -e "${YELLOW}Established connections:${NC}"
+            ss -tn state established
+        elif command -v netstat &>/dev/null; then
+            echo -e "${YELLOW}Listening ports:${NC}"
+            netstat -tulpn
+            echo
+            echo -e "${YELLOW}Established connections:${NC}"
+            netstat -tn | grep ESTABLISHED
+        else
+            echo -e "${RED}❌ No network tools available (ss or netstat)${NC}"
+        fi
+        echo
+    }
+
+        echo
+
+        read -r net_option
+
+        case "${net_option}" in
+            1)
+                dns_lookup
+                ;;
+            2)
+                traceroute_ping
+                ;;
+            3)
+                network_info
+                ;;
+            4)
+                bandwidth_monitor
+                ;;
+            5)
+                firewall_status
+                ;;
+            6)
+                active_connections
+                ;;
+            7)
+                exit 0
+                ;;
+            *)
+                echo "Unsupported option"
+                ;;
+        esac
+
+}
+
 # Ansible Fast Management [AFM]
 ansible_deploy() {
     check_installed "ansible" ||  { echo; echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; echo; exit 1; }
@@ -949,6 +1295,13 @@ main() {
 
 	# Parse command-line flags
 	case "$1" in
+	    -pm|--package-management)
+		require_root
+		package_management
+		;;
+	    -sc|--system-config)
+		system_config
+		;;
 	    -pud|--p-update)
 		    require_root
 		    package_update
@@ -1014,33 +1367,41 @@ main() {
 	    -hc|--health-check)
 		    health_check
 		    ;;
+        -nd|--network-diag)
+            network_diagnostics
+            ;;
 	    -A|--ansible)
 		    ansible_deploy
 		    ;;
 	    -h|--help)
 		    echo
 		    echo "Usage: robohelp [option]"
-		    echo "	-pud, --p-update	[1] Update Package Repositories"
-		    echo "	-pur, --p-upgrade 	[1] Upgrade installed packages"
-		    echo "	-arm, --p-autoremove  	[1] Remove unnecessary packages"
-		    echo "	-acl, --p-autoclean	[1] Clean up local repository"
-		    echo "	-fu,  --full-upgrade	Run full system upgrade with options from [1]"
-		    echo
-		    echo "	-dur, --dist-upgrade	Run distribution update for system"
-		    echo "	-ssh, --ssh-settings	Setup SSH Connections, distribute keys and config"
-	        echo
-		    echo "	-pi,  --p-install 	<name>	Install package from repository"
-		    echo "	-ps,  --p-search 	<name>	Search package in repository"
-		    echo " 	-prm, --p-remove	<name>	Remove package from system"
-		    echo "	-pp,  --p-purge		<name>	Remove package with all its dependencies"
-	            echo
-	            echo "	-hc,  --health-check	Run system health check"
-		    echo
-		    echo "	-A,   --ansible		Ansible Fast Management"
-		    echo "	-h,   --help		Show this help message"
-		    echo
-		    echo "Note: robohelp automatically checks for updates on GitHub at startup."
-		    echo "Current version: $VERSION"
+		echo
+		echo -e "${CYAN}🎯 Main Menus:${NC}"
+		echo "	-pm,  --package-management	Interactive package management menu"
+		echo "	-sc,  --system-config		Interactive system configuration menu"
+		echo "	-A,   --ansible			Ansible Fast Management (AFM)"
+		echo
+		echo -e "${CYAN}📦 Package Management (Quick Commands):${NC}"
+		echo "	-pud, --p-update		Update Package Repositories"
+		echo "	-pur, --p-upgrade		Upgrade installed packages"
+		echo "	-arm, --p-autoremove		Remove unnecessary packages"
+		echo "	-acl, --p-autoclean		Clean up local repository"
+		echo "	-fu,  --full-upgrade		Run full system upgrade"
+		echo "	-dur, --dist-upgrade		Run distribution upgrade"
+		echo "	-pi,  --p-install <name>	Install package(s)"
+		echo "	-ps,  --p-search <name>		Search package(s)"
+		echo "	-prm, --p-remove <name>		Remove package(s)"
+		echo "	-pp,  --p-purge <name>		Purge package(s) with dependencies"
+		echo
+		echo -e "${CYAN}⚙️  System Tools (Quick Commands):${NC}"
+		echo "	-ssh, --ssh-settings		SSH configuration menu"
+		echo "	-hc,  --health-check		Run system health check"
+		echo "	-nd,  --network-diag		Network diagnostics menu"
+		echo
+		echo -e "${CYAN}ℹ️  Information:${NC}"
+		echo "	-h,   --help			Show this help message"
+		echo
 		    ;;
 	    *)
 		    echo
