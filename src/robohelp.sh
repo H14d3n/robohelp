@@ -245,6 +245,115 @@ require_root() {
     fi
 }
 
+# Configure dialog colors for a sleek black theme
+setup_dialog_colors() {
+    export DIALOGRC="${TMPDIR:-/tmp}/.robohelp_dialogrc"
+    cat > "$DIALOGRC" <<'DIALOGEOF'
+# RoboHelp Dialog Color Theme - Sleek Black
+use_shadow = ON
+use_colors = ON
+
+# Screen colors (background)
+screen_color = (CYAN,BLACK,ON)
+
+# Shadow color
+shadow_color = (BLACK,BLACK,ON)
+
+# Dialog box
+dialog_color = (WHITE,BLUE,ON)
+
+# Dialog box title
+title_color = (CYAN,BLUE,ON)
+
+# Dialog box border
+border_color = (CYAN,BLUE,ON)
+border2_color = (CYAN,BLUE,ON)
+
+# Button colors
+button_active_color = (WHITE,CYAN,ON)
+button_inactive_color = (CYAN,BLUE,ON)
+button_key_active_color = (WHITE,CYAN,ON)
+button_key_inactive_color = (RED,BLUE,ON)
+button_label_active_color = (WHITE,CYAN,ON)
+button_label_inactive_color = (CYAN,BLUE,ON)
+
+# Input box colors
+inputbox_color = (WHITE,BLUE,ON)
+inputbox_border_color = (CYAN,BLUE,ON)
+inputbox_border2_color = (CYAN,BLUE,ON)
+
+# Search box
+searchbox_color = (WHITE,BLUE,ON)
+searchbox_title_color = (CYAN,BLUE,ON)
+searchbox_border_color = (CYAN,BLUE,ON)
+searchbox_border2_color = (CYAN,BLUE,ON)
+
+# Position indicator
+position_indicator_color = (CYAN,BLUE,ON)
+
+# Menu box
+menubox_color = (WHITE,BLUE,ON)
+menubox_border_color = (CYAN,BLUE,ON)
+menubox_border2_color = (CYAN,BLUE,ON)
+
+# Menu item
+item_color = (WHITE,BLUE,ON)
+item_selected_color = (WHITE,CYAN,ON)
+
+# Tag (menu item label)
+tag_color = (CYAN,BLUE,ON)
+tag_selected_color = (WHITE,CYAN,ON)
+tag_key_color = (YELLOW,BLUE,ON)
+tag_key_selected_color = (YELLOW,CYAN,ON)
+
+# Check box
+check_color = (WHITE,BLUE,ON)
+check_selected_color = (WHITE,CYAN,ON)
+
+# Up/down arrow
+uarrow_color = (CYAN,BLUE,ON)
+darrow_color = (CYAN,BLUE,ON)
+
+# Item help text
+itemhelp_color = (WHITE,BLUE,ON)
+
+# Form
+form_active_text_color = (WHITE,CYAN,ON)
+form_text_color = (WHITE,BLUE,ON)
+form_item_readonly_color = (CYAN,BLUE,ON)
+
+# Gauge (progress bar)
+gauge_color = (CYAN,BLACK,ON)
+DIALOGEOF
+}
+
+# Check if dialog is installed and offer to install it
+check_dialog() {
+    if ! command -v dialog &>/dev/null; then
+        echo
+        echo -e "${YELLOW}⚠️  'dialog' is not installed. Interactive menus will look better!${NC}"
+        echo -e "${CYAN}Would you like to install it now? [Y/n]${NC}"
+        read -r install_choice
+        
+        if [[ "$install_choice" =~ ^[Yy]$ ]] || [[ -z "$install_choice" ]]; then
+            echo -e "${CYAN}Installing dialog...${NC}"
+            $install_cmd dialog
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✅ Dialog installed successfully!${NC}"
+                setup_dialog_colors
+                return 0
+            else
+                echo -e "${RED}❌ Failed to install dialog.${NC}"
+                return 1
+            fi
+        else
+            return 1
+        fi
+    fi
+    setup_dialog_colors
+    return 0
+}
+
 # Main Functions
 check_installed() {
     if command -v "$1" &> /dev/null; then
@@ -255,25 +364,45 @@ check_installed() {
 }
 
 package_management() {
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}📦 Package Management${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] Update Package Repositories${NC}"
-    echo -e "${YELLOW}  [2] Upgrade Installed Packages${NC}"
-    echo -e "${YELLOW}  [3] Full System Upgrade${NC}"
-    echo -e "${YELLOW}  [4] Distribution Upgrade${NC}"
-    echo -e "${YELLOW}  [5] Remove Unnecessary Packages${NC}"
-    echo -e "${YELLOW}  [6] Clean Local Repository${NC}"
-    echo -e "${YELLOW}  [7] Install Package${NC}"
-    echo -e "${YELLOW}  [8] Remove Package${NC}"
-    echo -e "${YELLOW}  [9] Purge Package${NC}"
-    echo -e "${YELLOW}  [10] Search Package${NC}"
-    echo -e "${YELLOW}  [11] Exit${NC}"
-    echo
-
-    read -r pkg_option
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📦 Package Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Update Package Repositories${NC}"
+        echo -e "${YELLOW}  [2] Upgrade Installed Packages${NC}"
+        echo -e "${YELLOW}  [3] Full System Upgrade${NC}"
+        echo -e "${YELLOW}  [4] Distribution Upgrade${NC}"
+        echo -e "${YELLOW}  [5] Remove Unnecessary Packages${NC}"
+        echo -e "${YELLOW}  [6] Clean Local Repository${NC}"
+        echo -e "${YELLOW}  [7] Install Package${NC}"
+        echo -e "${YELLOW}  [8] Remove Package${NC}"
+        echo -e "${YELLOW}  [9] Purge Package${NC}"
+        echo -e "${YELLOW}  [10] Search Package${NC}"
+        echo -e "${YELLOW}  [11] Exit${NC}"
+        echo
+        read -r pkg_option
+    else
+        pkg_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "📦 Package Management" \
+            --menu "Choose an option:" 18 60 11 \
+            "1" "Update Package Repositories" \
+            "2" "Upgrade Installed Packages" \
+            "3" "Full System Upgrade" \
+            "4" "Distribution Upgrade" \
+            "5" "Remove Unnecessary Packages" \
+            "6" "Clean Local Repository" \
+            "7" "Install Package" \
+            "8" "Remove Package" \
+            "9" "Purge Package" \
+            "10" "Search Package" \
+            "11" "Exit" \
+            2>&1 >/dev/tty)
+        clear
+        [ $? -ne 0 ] && return 0
+    fi
 
     case "${pkg_option}" in
         1)
@@ -295,37 +424,73 @@ package_management() {
             package_autocls
             ;;
         7)
-            echo
-            echo -e "${CYAN}Enter package name(s) to install (space-separated):${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-            read -r packages
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Install Package" \
+                    --inputbox "Enter package name(s) to install (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to install (space-separated):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
             for pkg in $packages; do
                 package_install "$pkg"
             done
             ;;
         8)
-            echo
-            echo -e "${CYAN}Enter package name(s) to remove (space-separated):${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-            read -r packages
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Remove Package" \
+                    --inputbox "Enter package name(s) to remove (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to remove (space-separated):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
             for pkg in $packages; do
                 package_remove "$pkg"
             done
             ;;
         9)
-            echo
-            echo -e "${CYAN}Enter package name(s) to purge (space-separated):${NC}"
-            echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
-            read -r packages
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Purge Package" \
+                    --inputbox "Enter package name(s) to purge (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to purge (space-separated):${NC}"
+                echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
             for pkg in $packages; do
                 package_purge "$pkg"
             done
             ;;
         10)
-            echo
-            echo -e "${CYAN}Enter search term:${NC}"
-            echo -e "${CYAN}<─────────────────>${NC}"
-            read -r term
+            if command -v dialog &>/dev/null; then
+                term=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Search Package" \
+                    --inputbox "Enter search term:" 10 50 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter search term:${NC}"
+                echo -e "${CYAN}<─────────────────>${NC}"
+                read -r term
+            fi
             package_search "$term"
             ;;
         11)
@@ -524,18 +689,32 @@ mv_robohelp() {
 }
 
 system_config() {
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}⚙️  System Configuration${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] SSH Configuration${NC}"
-    echo -e "${YELLOW}  [2] System Health Check${NC}"
-    echo -e "${YELLOW}  [3] Network Diagnostics${NC}"
-    echo -e "${YELLOW}  [4] Exit${NC}"
-    echo
-
-    read -r sys_option
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}⚙️  System Configuration${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] SSH Configuration${NC}"
+        echo -e "${YELLOW}  [2] System Health Check${NC}"
+        echo -e "${YELLOW}  [3] Network Diagnostics${NC}"
+        echo -e "${YELLOW}  [4] Exit${NC}"
+        echo
+        read -r sys_option
+    else
+        sys_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "⚙️  System Configuration" \
+            --menu "Choose an option:" 12 60 4 \
+            "1" "SSH Configuration" \
+            "2" "System Health Check" \
+            "3" "Network Diagnostics" \
+            "4" "Exit" \
+            2>&1 >/dev/tty)
+        
+        clear
+        [ $? -ne 0 ] && return 0
+    fi
 
     case "${sys_option}" in
         1)
@@ -564,41 +743,86 @@ ssh_config() {
         return 1
     fi
 
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
-    echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
-    echo -e "${YELLOW}  [3] Copy SSH Key to Remote Host${NC}"
-    echo -e "${YELLOW}  [4] Edit SSH Config File${NC}"
-    echo -e "${YELLOW}  [5] Exit${NC}"
-    echo
-
-    read -r ssh_option
-    echo
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
+        echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
+        echo -e "${YELLOW}  [3] Copy SSH Key to Remote Host${NC}"
+        echo -e "${YELLOW}  [4] Edit SSH Config File${NC}"
+        echo -e "${YELLOW}  [5] Exit${NC}"
+        echo
+        read -r ssh_option
+        echo
+    else
+        ssh_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🔐 SSH Configuration" \
+            --menu "Choose an option:" 13 60 5 \
+            "1" "Establish SSH connection" \
+            "2" "Generate SSH Key Pair" \
+            "3" "Copy SSH Key to Remote Host" \
+            "4" "Edit SSH Config File" \
+            "5" "Exit" \
+            2>&1 >/dev/tty)
+        
+        clear
+        [ $? -ne 0 ] && return 0
+    fi
 
     case "${ssh_option}" in
         1)
-            echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
-            echo -e "${YELLOW}> [1] Yes${NC}"
-            echo -e "${YELLOW}> [2] No${NC}"
-            echo
-            read -r use_previous
-            echo
-
-            if [ "${use_previous}" = "1" ]; then
-                echo -e "${CYAN} Available SSH commands:${NC}"
-                echo -e "${CYAN}<──────────────────────>${NC}"
+            if command -v dialog &>/dev/null; then
+                dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "SSH Connection" \
+                    --yesno "Do you want to use a previously used command?" 7 50
+                use_previous=$?
+            else
+                echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
+                echo -e "${YELLOW}> [1] Yes${NC}"
+                echo -e "${YELLOW}> [2] No${NC}"
                 echo
+                read -r use_previous_input
+                echo
+                [ "$use_previous_input" = "1" ] && use_previous=0 || use_previous=1
+            fi
 
-                if find_ssh_commands; then
-                    echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
-                    echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-                    read -r selected_index
+            if [ "${use_previous}" = "0" ]; then
+                if ! find_ssh_commands; then
+                    echo -e "${YELLOW}Falling back to manual entry...${NC}"
                     echo
+                else
+                    if command -v dialog &>/dev/null; then
+                        # Build dialog menu items
+                        menu_items=()
+                        loop=0
+                        for command in "${ssh_commands[@]}"; do
+                            menu_items+=("$loop" "ssh $command")
+                            ((loop++))
+                        done
+                        
+                        selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
+                            --title "🔐 Select SSH Command" \
+                            --menu "Choose a previous SSH connection:" 20 70 12 \
+                            "${menu_items[@]}" \
+                            2>&1 >/dev/tty)
+                        
+                        dialog_exit=$?
+                        
+                        [ $dialog_exit -ne 0 ] && return 0
+                    else
+                        echo -e "${CYAN} Available SSH commands:${NC}"
+                        echo -e "${CYAN}<──────────────────────>${NC}"
+                        echo
+                        echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
+                        echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                        read -r selected_index
+                        echo
+                    fi
 
                     if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#ssh_commands[@]}" ]; then
                         echo -e "${RED}Invalid SSH command selection.${NC}"
@@ -610,17 +834,23 @@ ssh_config() {
                     echo
                     ssh ${selected_command}
                     return 0
-                else
-                    echo -e "${YELLOW}Falling back to manual entry...${NC}"
-                    echo
                 fi
             fi
 
-            echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-            echo
-
-            read -r "ssh_user" "ssh_host" "ssh_port"
+            if command -v dialog &>/dev/null; then
+                ssh_input=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "SSH Connection" \
+                    --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+                read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
+            else
+                echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                echo
+                read -r "ssh_user" "ssh_host" "ssh_port"
+            fi
 
             mkdir -p ~/.ssh
             ssh_command="${ssh_user}@${ssh_host} -p ${ssh_port:-22}"
@@ -647,11 +877,20 @@ ssh_config() {
             fi
             ;;
         3)
-            echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
-            echo
-
-            read -r ssh_user ssh_host ssh_port
+            if command -v dialog &>/dev/null; then
+                ssh_input=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Copy SSH Key" \
+                    --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+                read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
+            else
+                echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
+                echo
+                read -r ssh_user ssh_host ssh_port
+            fi
 
             ssh-copy-id -p "${ssh_port:-22}" "${ssh_user}@${ssh_host}"
             ;;
@@ -671,6 +910,12 @@ ssh_config() {
 
 find_playbook() {
     mapfile -t playbooks < <(find . -type f -name "*.yml")
+    
+    if [ ${#playbooks[@]} -eq 0 ]; then
+        echo -e "${RED}🛑 No playbook files (.yml) found in current directory.${NC}"
+        return 1
+    fi
+    
     loop=-1
     for playbook in "${playbooks[@]}"; do
         ((loop++))
@@ -678,6 +923,7 @@ find_playbook() {
         file_name=$(basename "$playbook")
         printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
     done
+    return 0
 }
 
 find_ssh_commands() {
@@ -699,6 +945,7 @@ find_ssh_commands() {
         ((loop++))
         printf '[%d] ssh %s\n\n' "$loop" "$command"
     done
+    return 0
 }
 
 view_inventory() {
@@ -764,33 +1011,74 @@ run_ping() {
 }
 
 run_playbook() {
-    echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
-    echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
-    read -r selected_index additional_flags
-    echo
+    if command -v dialog &>/dev/null; then
+        # Build dialog menu items
+        menu_items=()
+        loop=0
+        for playbook in "${playbooks[@]}"; do
+            file_name=$(basename "$playbook")
+            dir_path=$(dirname "$playbook")
+            menu_items+=("$loop" "$dir_path/$file_name")
+            ((loop++))
+        done
+        
+        selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "📋 Select Playbook" \
+            --menu "Choose a playbook to run:" 20 70 12 \
+            "${menu_items[@]}" \
+            2>&1 >/dev/tty)
+        
+        dialog_exit=$?
+        
+        [ $dialog_exit -ne 0 ] && return 0
+        
+        # Ask for additional flags
+        additional_flags=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "Additional Flags" \
+            --inputbox "Enter additional flags (e.g. remove) or leave empty:" 10 60 \
+            2>&1 >/dev/tty)
+    else
+        echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
+        echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
+        read -r selected_index additional_flags
+        echo
+    fi
 
     if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
 	    echo -e "${RED} Invalid playbook selection.${NC}"
 	    return 1
     fi
 
-    echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
-    echo -e "${CYAN}<────────────────────────────────────>${NC}"
-    read -r ansible_vault_val
-    echo
+    if command -v dialog &>/dev/null; then
+        dialog --backtitle "RoboHelp v$VERSION" \
+            --title "Ansible Vault" \
+            --yesno "Do you use Ansible Vault?" 7 40
+        vault_choice=$?
+        
+        if [ $vault_choice -eq 0 ]; then
+            vault_flag="--ask-vault-pass"
+        else
+            vault_flag="--ask-become-pass"
+        fi
+    else
+        echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
+        echo -e "${CYAN}<────────────────────────────────────>${NC}"
+        read -r ansible_vault_val
+        echo
 
-    case "${ansible_vault_val,,}" in
-	    yes)
-		    vault_flag="--ask-vault-pass"
-	        ;;
-	    no)
-		    vault_flag="--ask-become-pass"
-		    ;;
-	    *)
-		    echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
-		    return 1
-		    ;;
-    esac
+        case "${ansible_vault_val,,}" in
+            yes)
+                vault_flag="--ask-vault-pass"
+                ;;
+            no)
+                vault_flag="--ask-become-pass"
+                ;;
+            *)
+                echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
+                return 1
+                ;;
+        esac
+    fi
 
     playbook="$(basename "${playbooks[$selected_index]}")"
     extra_vars=()
@@ -816,7 +1104,9 @@ run_playbook() {
 }
 
 playbook_actions() {
-    find_playbook # Is always executed
+    if ! find_playbook; then
+        return 1
+    fi
 
     if [ "$1" = "run" ]; then
         run_playbook
@@ -824,30 +1114,57 @@ playbook_actions() {
 }
 
 live_fire() {
-    echo
-    echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
-    echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
-    read -r live_fire_command
-    echo
+    if command -v dialog &>/dev/null; then
+        live_fire_command=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "Live-Fire Command" \
+            --inputbox "Which command would you like to Live-Fire?" 10 60 \
+            2>&1 >/dev/tty)
+        
+        [ $? -ne 0 ] && return 0
+    else
+        echo
+        echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
+        echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
+        read -r live_fire_command
+        echo
+    fi
 
-    echo -e "${CYAN} Which hosts should be targeted?${NC}"
-    echo -e "${CYAN}<───────────────────────────────>${NC}"
-    echo -e "${YELLOW}> [1] All${NC}"
-    echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
-    echo
-
-    read -r live_fire_target
+    if command -v dialog &>/dev/null; then
+        live_fire_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "Target Hosts" \
+            --menu "Which hosts should be targeted?" 11 60 2 \
+            "1" "All" \
+            "2" "Write Own (Single host or host groups)" \
+            2>&1 >/dev/tty)
+        
+        [ $? -ne 0 ] && return 0
+    else
+        echo -e "${CYAN} Which hosts should be targeted?${NC}"
+        echo -e "${CYAN}<───────────────────────────────────>${NC}"
+        echo -e "${YELLOW}> [1] All${NC}"
+        echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
+        echo
+        read -r live_fire_target
+    fi
 
     case "${live_fire_target}" in
-	1)
-	    ansible -i hosts.yml all -m shell -a "${live_fire_command}"
-	    ;;
-	2)
-	    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
-	    echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
-	    echo
-	    read -r custom_target
-
+        1)
+            ansible -i hosts.yml all -m shell -a "${live_fire_command}"
+            ;;
+        2)
+            if command -v dialog &>/dev/null; then
+                custom_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Custom Target" \
+                    --inputbox "Enter host or group (e.g. webservers, nagios):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                [ $? -ne 0 ] && return 0
+            else
+                echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
+                echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
+                echo
+                read -r custom_target
+            fi
 	    ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
 	    ;;
 	*)
@@ -1000,18 +1317,37 @@ health_check() {
 
 network_diagnostics() {
 
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} Welcome to Network Diagnostics${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] DNS Lookup${NC}"
-    echo -e "${YELLOW}  [2] Traceroute/Ping utilities${NC}"
-    echo -e "${YELLOW}  [3] Network interface info${NC}"
-    echo -e "${YELLOW}  [4] Bandwidth monitoring${NC}"
-    echo -e "${YELLOW}  [5] Firewall status (ufw/iptables)${NC}"
-    echo -e "${YELLOW}  [6] Active connections${NC}"
-    echo -e "${YELLOW}  [7] Exit${NC}"
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to Network Diagnostics${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] DNS Lookup${NC}"
+        echo -e "${YELLOW}  [2] Traceroute/Ping utilities${NC}"
+        echo -e "${YELLOW}  [3] Network interface info${NC}"
+        echo -e "${YELLOW}  [4] Bandwidth monitoring${NC}"
+        echo -e "${YELLOW}  [5] Firewall status (ufw/iptables)${NC}"
+        echo -e "${YELLOW}  [6] Active connections${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r net_option
+    else
+        net_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🌐 Network Diagnostics" \
+            --menu "Choose an option:" 16 60 7 \
+            "1" "DNS Lookup" \
+            "2" "Traceroute/Ping utilities" \
+            "3" "Network interface info" \
+            "4" "Bandwidth monitoring" \
+            "5" "Firewall status (ufw/iptables)" \
+            "6" "Active connections" \
+            "7" "Exit" \
+            2>&1 >/dev/tty)
+        
+        [ $? -ne 0 ] && return 0
+    fi
 
     dns_lookup() {
         echo
@@ -1019,8 +1355,18 @@ network_diagnostics() {
         echo -e "${CYAN}🔍 DNS Lookup${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo
-        echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
-        read -r domain
+        
+        if command -v dialog &>/dev/null; then
+            domain=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "DNS Lookup" \
+                --inputbox "Enter domain/hostname to lookup:" 10 50 \
+                2>&1 >/dev/tty)
+            
+            [ $? -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
+            read -r domain
+        fi
         
         if command -v dig &>/dev/null; then
             echo
@@ -1046,14 +1392,33 @@ network_diagnostics() {
         echo -e "${CYAN}🛰️  Traceroute/Ping Utilities${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo
-        echo -e "${YELLOW}  [1] Ping${NC}"
-        echo -e "${YELLOW}  [2] Traceroute${NC}"
-        echo
-        read -r trace_option
         
-        echo -e "${YELLOW}Enter target host/IP:${NC}"
-        read -r target
-        echo
+        if command -v dialog &>/dev/null; then
+            trace_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Traceroute/Ping" \
+                --menu "Choose utility:" 10 50 2 \
+                "1" "Ping" \
+                "2" "Traceroute" \
+                2>&1 >/dev/tty)
+            
+            [ $? -ne 0 ] && return 0
+            
+            target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Traceroute/Ping" \
+                --inputbox "Enter target host/IP:" 10 50 \
+                2>&1 >/dev/tty)
+            
+            [ $? -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}  [1] Ping${NC}"
+            echo -e "${YELLOW}  [2] Traceroute${NC}"
+            echo
+            read -r trace_option
+            
+            echo -e "${YELLOW}Enter target host/IP:${NC}"
+            read -r target
+            echo
+        fi
         
         case "${trace_option}" in
             1)
@@ -1195,10 +1560,6 @@ network_diagnostics() {
         echo
     }
 
-        echo
-
-        read -r net_option
-
         case "${net_option}" in
             1)
                 dns_lookup
@@ -1232,20 +1593,35 @@ network_diagnostics() {
 ansible_deploy() {
     check_installed "ansible" ||  { echo; echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; echo; exit 1; }
 
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
-    echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"
-    echo -e "${YELLOW}  [3] Live-Fire Command${NC}"
-    echo -e "${YELLOW}  [4] View Inventory${NC}"
-    echo -e "${YELLOW}  [5] View Last Run Log${NC}"
-    echo -e "${YELLOW}  [6] Exit${NC}"
-    echo
-
-    read -r option
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
+        echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"
+        echo -e "${YELLOW}  [3] Live-Fire Command${NC}"
+        echo -e "${YELLOW}  [4] View Inventory${NC}"
+        echo -e "${YELLOW}  [5] View Last Run Log${NC}"
+        echo -e "${YELLOW}  [6] Exit${NC}"
+        echo
+        read -r option
+    else
+        option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🤖 Ansible Fast Management (AFM)" \
+            --menu "Choose an option:" 14 60 6 \
+            "1" "Run Playbook (with Flags)" \
+            "2" "Test Connection (Ping Hosts)" \
+            "3" "Live-Fire Command" \
+            "4" "View Inventory" \
+            "5" "View Last Run Log" \
+            "6" "Exit" \
+            2>&1 >/dev/tty)
+        
+        [ $? -ne 0 ] && return 0
+    fi
 
     if printf -- '%d' "${option}" > /dev/null 2>&1; then
 	    case "${option}" in
@@ -1291,7 +1667,7 @@ main() {
     echo
     
     # Check for updates (pass all arguments to handle re-execution)
-    check_and_update "$@"
+    # check_and_update "$@"
 
 	# Parse command-line flags
 	case "$1" in
