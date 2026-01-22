@@ -77,6 +77,14 @@ show_banner() {
     echo -e "${CYAN}Version: $VERSION${NC}"
 }
 
+# Function to scroll screen without clearing (keeps scrollback)
+scroll_screen() {
+    local lines=$(tput lines 2>/dev/null || echo 24)
+    for ((i=0; i<lines; i++)); do
+        echo
+    done
+}
+
 # Function to get remote version from GitHub
 get_remote_version() {
     if command -v curl &>/dev/null; then
@@ -400,7 +408,7 @@ package_management() {
             "10" "Search Package" \
             "11" "Exit" \
             2>&1 >/dev/tty)
-        clear
+        clear -x
         [ $? -ne 0 ] && return 0
     fi
 
@@ -429,7 +437,7 @@ package_management() {
                     --title "Install Package" \
                     --inputbox "Enter package name(s) to install (space-separated):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x
                 [ $? -ne 0 ] && return 0
             else
                 echo
@@ -447,7 +455,7 @@ package_management() {
                     --title "Remove Package" \
                     --inputbox "Enter package name(s) to remove (space-separated):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x    
                 [ $? -ne 0 ] && return 0
             else
                 echo
@@ -465,7 +473,7 @@ package_management() {
                     --title "Purge Package" \
                     --inputbox "Enter package name(s) to purge (space-separated):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x
                 [ $? -ne 0 ] && return 0
             else
                 echo
@@ -483,7 +491,7 @@ package_management() {
                     --title "Search Package" \
                     --inputbox "Enter search term:" 10 50 \
                     2>&1 >/dev/tty)
-                
+                clear -x
                 [ $? -ne 0 ] && return 0
             else
                 echo
@@ -711,8 +719,7 @@ system_config() {
             "3" "Network Diagnostics" \
             "4" "Exit" \
             2>&1 >/dev/tty)
-        
-        clear
+        clear -x    
         [ $? -ne 0 ] && return 0
     fi
 
@@ -768,8 +775,7 @@ ssh_config() {
             "4" "Edit SSH Config File" \
             "5" "Exit" \
             2>&1 >/dev/tty)
-        
-        clear
+        clear -x
         [ $? -ne 0 ] && return 0
     fi
 
@@ -842,7 +848,7 @@ ssh_config() {
                     --title "SSH Connection" \
                     --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x    
                 [ $? -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
@@ -882,7 +888,7 @@ ssh_config() {
                     --title "Copy SSH Key" \
                     --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x    
                 [ $? -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
@@ -1037,6 +1043,7 @@ run_playbook() {
             --title "Additional Flags" \
             --inputbox "Enter additional flags (e.g. remove) or leave empty:" 10 60 \
             2>&1 >/dev/tty)
+        clear -x    
     else
         echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
         echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
@@ -1119,7 +1126,7 @@ live_fire() {
             --title "Live-Fire Command" \
             --inputbox "Which command would you like to Live-Fire?" 10 60 \
             2>&1 >/dev/tty)
-        
+        clear -x    
         [ $? -ne 0 ] && return 0
     else
         echo
@@ -1157,7 +1164,7 @@ live_fire() {
                     --title "Custom Target" \
                     --inputbox "Enter host or group (e.g. webservers, nagios):" 10 60 \
                     2>&1 >/dev/tty)
-                
+                clear -x    
                 [ $? -ne 0 ] && return 0
             else
                 echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
@@ -1303,7 +1310,7 @@ health_check() {
                 fi
                 ;;
             *)
-                echo -e "   ${YELLOW}ℹ️  Security check not configured for $distro${NC}"
+                echo -e "   ${YELLOW}ℹ️  Security check not yet configured for $distro${NC}"
                 ;;
         esac
     fi
@@ -1345,7 +1352,7 @@ network_diagnostics() {
             "6" "Active connections" \
             "7" "Exit" \
             2>&1 >/dev/tty)
-        
+        clear -x
         [ $? -ne 0 ] && return 0
     fi
 
@@ -1361,7 +1368,7 @@ network_diagnostics() {
                 --title "DNS Lookup" \
                 --inputbox "Enter domain/hostname to lookup:" 10 50 \
                 2>&1 >/dev/tty)
-            
+            clear -x    
             [ $? -ne 0 ] && return 0
         else
             echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
@@ -1407,7 +1414,7 @@ network_diagnostics() {
                 --title "Traceroute/Ping" \
                 --inputbox "Enter target host/IP:" 10 50 \
                 2>&1 >/dev/tty)
-            
+            clear -x    
             [ $? -ne 0 ] && return 0
         else
             echo -e "${YELLOW}  [1] Ping${NC}"
@@ -1560,33 +1567,376 @@ network_diagnostics() {
         echo
     }
 
-        case "${net_option}" in
-            1)
-                dns_lookup
-                ;;
-            2)
-                traceroute_ping
-                ;;
-            3)
-                network_info
-                ;;
-            4)
-                bandwidth_monitor
-                ;;
-            5)
-                firewall_status
-                ;;
-            6)
-                active_connections
-                ;;
-            7)
-                exit 0
-                ;;
-            *)
-                echo "Unsupported option"
-                ;;
-        esac
+    case "${net_option}" in
+        1)
+            dns_lookup
+            ;;
+        2)
+            traceroute_ping
+            ;;
+        3)
+            network_info
+            ;;
+        4)
+            bandwidth_monitor
+            ;;
+        5)
+            firewall_status
+            ;;
+        6)
+            active_connections
+            ;;
+        7)
+            exit 0
+            ;;
+        *)
+            echo "Unsupported option"
+            ;;
+    esac
+}
 
+disk_management() {
+    disk_usage_by_directory() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📊 Disk Usage by Directory${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            target_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Disk Usage" \
+                --inputbox "Enter directory path (default: current directory):" 10 60 "$PWD" \
+                2>&1 >/dev/tty)
+            clear -x    
+            [ $? -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory path (default: current directory):${NC}"
+            read -r target_dir
+            [ -z "$target_dir" ] && target_dir="$PWD"
+        fi
+        
+        if [ ! -d "$target_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $target_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Analyzing disk usage in: $target_dir${NC}"
+        echo
+        
+        if command -v du &>/dev/null; then
+            du -h --max-depth=1 "$target_dir" 2>/dev/null | sort -hr | head -20
+        else
+            echo -e "${RED}❌ 'du' command not found${NC}"
+        fi
+        echo
+    }
+
+    find_largest_files() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📁 Find Largest Files${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            search_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Largest Files" \
+                --inputbox "Enter directory to search (default: current directory):" 10 60 "$PWD" \
+                2>&1 >/dev/tty)
+            clear -x
+            [ $? -ne 0 ] && return 0
+            
+            num_files=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Largest Files" \
+                --inputbox "How many files to show? (default: 20):" 10 60 "20" \
+                2>&1 >/dev/tty)
+            clear -x
+            [ $? -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory to search (default: current directory):${NC}"
+            read -r search_dir
+            [ -z "$search_dir" ] && search_dir="$PWD"
+            
+            echo -e "${YELLOW}How many files to show? (default: 20):${NC}"
+            read -r num_files
+            [ -z "$num_files" ] && num_files=20
+        fi
+        
+        if [ ! -d "$search_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $search_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Searching for largest files in: $search_dir${NC}"
+        echo -e "${YELLOW}This may take a while...${NC}"
+        echo
+        
+        if command -v find &>/dev/null; then
+            find "$search_dir" -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n "$num_files"
+        else
+            echo -e "${RED}❌ 'find' command not found${NC}"
+        fi
+        echo
+    }
+
+    clean_package_cache() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🧹 Clean Package Cache${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        echo -e "${YELLOW}Current cache usage:${NC}"
+        
+        if [ -d "/var/cache/apt/archives" ]; then
+            apt_cache=$(du -sh /var/cache/apt/archives 2>/dev/null | cut -f1)
+            echo -e "${CYAN}APT cache: ${apt_cache:-Unknown}${NC}"
+        fi
+        
+        if [ -d "/var/cache/pacman/pkg" ]; then
+            pacman_cache=$(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)
+            echo -e "${CYAN}Pacman cache: ${pacman_cache:-Unknown}${NC}"
+        fi
+        
+        if [ -d "/var/cache/dnf" ]; then
+            dnf_cache=$(du -sh /var/cache/dnf 2>/dev/null | cut -f1)
+            echo -e "${CYAN}DNF cache: ${dnf_cache:-Unknown}${NC}"
+        fi
+        
+        echo
+        echo -e "${YELLOW}Do you want to clean the package cache? [y/N]${NC}"
+        read -r confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            if command -v apt-get &>/dev/null; then
+                echo -e "${CYAN}Cleaning APT cache...${NC}"
+                sudo apt-get clean
+                sudo apt-get autoclean
+            fi
+            
+            if command -v pacman &>/dev/null; then
+                echo -e "${CYAN}Cleaning Pacman cache...${NC}"
+                sudo pacman -Sc --noconfirm
+            fi
+            
+            if command -v dnf &>/dev/null; then
+                echo -e "${CYAN}Cleaning DNF cache...${NC}"
+                sudo dnf clean all
+            fi
+            
+            echo -e "${GREEN}✅ Package cache cleaned${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+        fi
+        echo
+    }
+
+    clean_journal_logs() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📝 Clean Journal Logs${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v journalctl &>/dev/null; then
+            echo -e "${YELLOW}Current journal size:${NC}"
+            journalctl --disk-usage
+            echo
+            
+            if command -v dialog &>/dev/null; then
+                retention=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Clean Journal Logs" \
+                    --menu "Keep logs for how long?" 14 60 5 \
+                    "1" "2 days" \
+                    "2" "1 week" \
+                    "3" "2 weeks" \
+                    "4" "1 month" \
+                    "5" "Cancel" \
+                    2>&1 >/dev/tty)
+                clear -x    
+                [ $? -ne 0 ] && return 0
+            else
+                echo -e "${YELLOW}Keep logs for:${NC}"
+                echo "  [1] 2 days"
+                echo "  [2] 1 week"
+                echo "  [3] 2 weeks"
+                echo "  [4] 1 month"
+                echo "  [5] Cancel"
+                read -r retention
+            fi
+            
+            case "$retention" in
+                1) time="2d" ;;
+                2) time="1w" ;;
+                3) time="2w" ;;
+                4) time="1M" ;;
+                5|*) echo -e "${YELLOW}Cancelled${NC}"; return 0 ;;
+            esac
+            
+            echo -e "${CYAN}Cleaning logs older than $time...${NC}"
+            sudo journalctl --vacuum-time="$time"
+            echo
+            echo -e "${GREEN}✅ Journal logs cleaned${NC}"
+        else
+            echo -e "${RED}❌ journalctl not found (systemd not available)${NC}"
+        fi
+        echo
+    }
+
+    empty_trash() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🗑️  Empty Trash${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        trash_dirs=(
+            "$HOME/.local/share/Trash"
+            "$HOME/.Trash"
+        )
+        
+        total_size=0
+        for trash_dir in "${trash_dirs[@]}"; do
+            if [ -d "$trash_dir" ]; then
+                size=$(du -sb "$trash_dir" 2>/dev/null | cut -f1)
+                if [ -n "$size" ] && [ "$size" -gt 0 ]; then
+                    human_size=$(du -sh "$trash_dir" 2>/dev/null | cut -f1)
+                    echo -e "${CYAN}Trash location: $trash_dir (${human_size})${NC}"
+                    total_size=$((total_size + size))
+                fi
+            fi
+        done
+        
+        if [ "$total_size" -eq 0 ]; then
+            echo -e "${GREEN}✅ Trash is already empty${NC}"
+            echo
+            return 0
+        fi
+        
+        echo
+        echo -e "${YELLOW}Do you want to empty the trash? [y/N]${NC}"
+        read -r confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            for trash_dir in "${trash_dirs[@]}"; do
+                if [ -d "$trash_dir" ]; then
+                    echo -e "${CYAN}Emptying: $trash_dir${NC}"
+                    rm -rf "${trash_dir:?}"/* 2>/dev/null
+                fi
+            done
+            echo -e "${GREEN}✅ Trash emptied${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+        fi
+        echo
+    }
+
+    find_duplicate_files() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔍 Find Duplicate Files${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if ! command -v fdupes &>/dev/null; then
+            echo -e "${YELLOW}⚠️  'fdupes' is not installed${NC}"
+            echo -e "${CYAN}Install with: robohelp -pi fdupes${NC}"
+            echo
+            return 1
+        fi
+        
+        if command -v dialog &>/dev/null; then
+            search_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Duplicates" \
+                --inputbox "Enter directory to search:" 10 60 "$HOME" \
+                2>&1 >/dev/tty)
+            clear -x    
+            [ $? -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory to search (default: $HOME):${NC}"
+            read -r search_dir
+            [ -z "$search_dir" ] && search_dir="$HOME"
+        fi
+        
+        if [ ! -d "$search_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $search_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Searching for duplicate files in: $search_dir${NC}"
+        echo -e "${YELLOW}This may take a while...${NC}"
+        echo
+        
+        fdupes -r "$search_dir"
+        echo
+    }
+
+    smart_status() {
+        :
+    }
+
+    mount_unmount_drives() {
+        :
+    }
+
+    if command -v dialog &>/dev/null; then
+        disk_option=$(dialog --clear --backtitle "RoboHelp v$VERSION" \
+            --title "💽 Disk Management" \
+            --menu "Choose an option:" 16 60 7 \
+            "1" "Disk Usage by Directory" \
+            "2" "Find Largest Files" \
+            "3" "Clean Package Cache" \
+            "4" "Clean Journal Logs" \
+            "5" "Empty Trash" \
+            "6" "Find Duplicate Files" \
+            "7" "Exit" \
+            2>&1 >/dev/tty)
+        clear -x    
+        [ $? -ne 0 ] && return 0
+    else
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to Disk Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Disk Usage by Directory${NC}"
+        echo -e "${YELLOW}  [2] Find Largest Files${NC}"
+        echo -e "${YELLOW}  [3] Clean Package Cache${NC}"
+        echo -e "${YELLOW}  [4] Clean Journal Logs${NC}"
+        echo -e "${YELLOW}  [5] Empty Trash${NC}"
+        echo -e "${YELLOW}  [6] Find Duplicate Files${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r disk_option
+    fi
+
+    case "${disk_option}" in
+        1)
+            disk_usage_by_directory
+            ;;
+        2)
+            find_largest_files
+            ;;
+        3)
+            clean_package_cache
+            ;;
+        4)
+            clean_journal_logs
+            ;;
+        5)
+            empty_trash
+            ;;
+        6)
+            find_duplicate_files
+            ;;
+        7)
+            exit 0
+            ;;
+        *)
+            echo "Unsupported option"
+            ;;
+    esac
 }
 
 # Ansible Fast Management [AFM]
@@ -1619,7 +1969,7 @@ ansible_deploy() {
             "5" "View Last Run Log" \
             "6" "Exit" \
             2>&1 >/dev/tty)
-        
+        clear -x
         [ $? -ne 0 ] && return 0
     fi
 
@@ -1746,6 +2096,9 @@ main() {
         -nd|--network-diag)
             network_diagnostics
             ;;
+        -dm|--disk-management)
+            disk_management
+            ;;
 	    -A|--ansible)
 		    ansible_deploy
 		    ;;
@@ -1759,11 +2112,11 @@ main() {
 		echo "	-A,   --ansible			Ansible Fast Management (AFM)"
 		echo
 		echo -e "${CYAN}📦 Package Management (Quick Commands):${NC}"
-		echo "	-pud, --p-update		Update Package Repositories"
-		echo "	-pur, --p-upgrade		Upgrade installed packages"
-		echo "	-arm, --p-autoremove		Remove unnecessary packages"
-		echo "	-acl, --p-autoclean		Clean up local repository"
-		echo "	-fu,  --full-upgrade		Run full system upgrade"
+		echo "	-pud, --p-update		Update Package Repositories [1]"
+		echo "	-pur, --p-upgrade		Upgrade installed packages [1]"
+		echo "	-arm, --p-autoremove		Remove unnecessary packages [1]"
+		echo "	-acl, --p-autoclean		Clean up local repository [1]"
+		echo "	-fu,  --full-upgrade		Run full system upgrade with options [1]"
 		echo "	-dur, --dist-upgrade		Run distribution upgrade"
 		echo "	-pi,  --p-install <name>	Install package(s)"
 		echo "	-ps,  --p-search <name>		Search package(s)"
@@ -1774,7 +2127,7 @@ main() {
 		echo "	-ssh, --ssh-settings		SSH configuration menu"
 		echo "	-hc,  --health-check		Run system health check"
 		echo "	-nd,  --network-diag		Network diagnostics menu"
-		echo
+		echo "	-dm,  --disk-management		Disk management menu"
 		echo -e "${CYAN}ℹ️  Information:${NC}"
 		echo "	-h,   --help			Show this help message"
 		echo
