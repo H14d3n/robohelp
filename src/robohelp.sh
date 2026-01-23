@@ -842,8 +842,10 @@ ssh_config() {
                     --title "SSH Connection" \
                     --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
                     2>&1 >/dev/tty)
-                clear -x    
-                [ $? -ne 0 ] && return 0
+                
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
                 echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
@@ -882,8 +884,9 @@ ssh_config() {
                     --title "Copy SSH Key" \
                     --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
                     2>&1 >/dev/tty)
-                clear -x    
-                [ $? -ne 0 ] && return 0
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
                 echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
@@ -1544,8 +1547,9 @@ disk_management() {
                     "3" "2 weeks" \
                     "4" "1 month" \
                     2>&1 >/dev/tty)
+                dialog_exit=$?
                 clear -x    
-                [ $? -ne 0 ] && return 0
+                [ $dialog_exit -ne 0 ] && return 0
             else
                 echo -e "${YELLOW}Keep logs for:${NC}"
                 echo "  [1] 2 days"
@@ -1718,15 +1722,17 @@ disk_management() {
                         --title "Mount Drive" \
                         --inputbox "Enter device to mount (e.g., /dev/sdb1):" 10 60 \
                         2>&1 >/dev/tty)
+                    dialog_exit=$?
                     clear -x
-                    [ $? -ne 0 ] && return 0
+                    [ $dialog_exit -ne 0 ] && return 0
                     
                     mount_point=$(dialog --backtitle "RoboHelp v$VERSION" \
                         --title "Mount Drive" \
                         --inputbox "Enter mount point (e.g., /mnt/usb):" 10 60 \
                         2>&1 >/dev/tty)
+                    dialog_exit=$?
                     clear -x
-                    [ $? -ne 0 ] && return 0
+                    [ $dialog_exit -ne 0 ] && return 0
                 else
                     echo -e "${YELLOW}Enter device to mount (e.g., /dev/sdb1):${NC}"
                     read -r device
@@ -1775,8 +1781,9 @@ disk_management() {
                         --title "Unmount Drive" \
                         --inputbox "Enter device or mount point to unmount:" 10 60 \
                         2>&1 >/dev/tty)
+                    dialog_exit=$?
                     clear -x
-                    [ $? -ne 0 ] && return 0
+                    [ $dialog_exit -ne 0 ] && return 0
                 else
                     echo -e "${YELLOW}Enter device or mount point to unmount:${NC}"
                     read -r unmount_target
