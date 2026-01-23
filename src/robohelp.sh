@@ -77,14 +77,6 @@ show_banner() {
     echo -e "${CYAN}Version: $VERSION${NC}"
 }
 
-# Function to scroll screen without clearing (keeps scrollback)
-scroll_screen() {
-    local lines=$(tput lines 2>/dev/null || echo 24)
-    for ((i=0; i<lines; i++)); do
-        echo
-    done
-}
-
 # Function to get remote version from GitHub
 get_remote_version() {
     if command -v curl &>/dev/null; then
@@ -372,6 +364,7 @@ check_installed() {
 }
 
 package_management() {
+    
     if ! check_dialog; then
         # Fallback to old menu
         echo
@@ -395,7 +388,7 @@ package_management() {
     else
         pkg_option=$(dialog --backtitle "RoboHelp v$VERSION" \
             --title "📦 Package Management" \
-            --menu "Choose an option:" 18 60 11 \
+            --menu "Choose an option:" 17 60 10 \
             "1" "Update Package Repositories" \
             "2" "Upgrade Installed Packages" \
             "3" "Full System Upgrade" \
@@ -406,10 +399,10 @@ package_management() {
             "8" "Remove Package" \
             "9" "Purge Package" \
             "10" "Search Package" \
-            "11" "Exit" \
             2>&1 >/dev/tty)
+        dialog_exit=$?
         clear -x
-        [ $? -ne 0 ] && return 0
+        [ $dialog_exit -ne 0 ] && return 0
     fi
 
     case "${pkg_option}" in
@@ -491,8 +484,9 @@ package_management() {
                     --title "Search Package" \
                     --inputbox "Enter search term:" 10 50 \
                     2>&1 >/dev/tty)
+                dialog_exit=$?
                 clear -x
-                [ $? -ne 0 ] && return 0
+                [ $dialog_exit -ne 0 ] && return 0
             else
                 echo
                 echo -e "${CYAN}Enter search term:${NC}"
@@ -510,6 +504,7 @@ package_management() {
     esac
 }
 
+# Package Management Functions
 package_update() {
     echo
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -670,7 +665,6 @@ package_search() {
     echo
 }
 
-
 full_upgrade() {
     echo
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -697,6 +691,7 @@ mv_robohelp() {
 }
 
 system_config() {
+    
     if ! check_dialog; then
         # Fallback to old menu
         echo
@@ -713,11 +708,10 @@ system_config() {
     else
         sys_option=$(dialog --backtitle "RoboHelp v$VERSION" \
             --title "⚙️  System Configuration" \
-            --menu "Choose an option:" 12 60 4 \
+            --menu "Choose an option:" 11 60 3 \
             "1" "SSH Configuration" \
             "2" "System Health Check" \
             "3" "Network Diagnostics" \
-            "4" "Exit" \
             2>&1 >/dev/tty)
         clear -x    
         [ $? -ne 0 ] && return 0
@@ -768,15 +762,15 @@ ssh_config() {
     else
         ssh_option=$(dialog --backtitle "RoboHelp v$VERSION" \
             --title "🔐 SSH Configuration" \
-            --menu "Choose an option:" 13 60 5 \
+            --menu "Choose an option:" 12 60 4 \
             "1" "Establish SSH connection" \
             "2" "Generate SSH Key Pair" \
             "3" "Copy SSH Key to Remote Host" \
             "4" "Edit SSH Config File" \
-            "5" "Exit" \
             2>&1 >/dev/tty)
+        dialog_exit=$?
         clear -x
-        [ $? -ne 0 ] && return 0
+        [ $dialog_exit -ne 0 ] && return 0
     fi
 
     case "${ssh_option}" in
@@ -818,7 +812,7 @@ ssh_config() {
                             2>&1 >/dev/tty)
                         
                         dialog_exit=$?
-                        
+                        clear -x
                         [ $dialog_exit -ne 0 ] && return 0
                     else
                         echo -e "${CYAN} Available SSH commands:${NC}"
@@ -914,24 +908,6 @@ ssh_config() {
     esac
 }
 
-find_playbook() {
-    mapfile -t playbooks < <(find . -type f -name "*.yml")
-    
-    if [ ${#playbooks[@]} -eq 0 ]; then
-        echo -e "${RED}🛑 No playbook files (.yml) found in current directory.${NC}"
-        return 1
-    fi
-    
-    loop=-1
-    for playbook in "${playbooks[@]}"; do
-        ((loop++))
-        dir_path=$(dirname "$playbook")
-        file_name=$(basename "$playbook")
-        printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
-    done
-    return 0
-}
-
 find_ssh_commands() {
     if [ ! -f ~/.ssh/.robohelp_lsc.txt ]; then
         echo -e "${RED}⚠️  No previous SSH commands found.${NC}"
@@ -952,232 +928,6 @@ find_ssh_commands() {
         printf '[%d] ssh %s\n\n' "$loop" "$command"
     done
     return 0
-}
-
-view_inventory() {
-    local inv
-    if [ -f hosts.yml ]; then
-        inv="hosts.yml"
-    elif ls hosts.* >/dev/null 2>&1; then
-        # fallback to any hosts.* file, pick the first
-        inv=$(ls hosts.* 2>/dev/null | head -n1)
-    else
-        echo -e "${RED}🛑 No inventory file found (expected hosts.yml).${NC}"
-        return 1
-    fi
-    echo
-    echo -e "${YELLOW}📄 Showing Ansible inventory: $inv${NC}"
-    echo
-    if [ -n "$PAGER" ]; then
-        "$PAGER" "$inv" 2>/dev/null || cat "$inv"
-    else
-        cat "$inv"
-    fi
-}
-
-
-log_exists() {
-    log_path="$HOME/.log/afmrun.log"
-    if [ -f "$log_path" ]; then
-        return 0
-    else
-	    mkdir -p "$(dirname "$log_path")"
-	    touch "$log_path"
-    fi
-}
-
-log_write() {
-    case "$1" in
-    "scs")
-        echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
- 	    ;;
-    "ping")
-	    echo "$timestamp - Ping ran successfully" >> "$log_path"
-	    ;;
-    "fail")
-	    echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
-	    ;;
-    "pingfail")
-	    echo "$timestamp - Running Ping with inventory file failed" >> "$log_path"
-	    ;;
-    esac
-}
-
-log_actions() {
-    log_exists && log_write "$1"
-}
-
-
-run_ping() {
-    if ansible all -i hosts.* -m ping; then
-      log_actions "ping"
-    else
-      log_actions "pingfail"
-    fi
-}
-
-run_playbook() {
-    if command -v dialog &>/dev/null; then
-        # Build dialog menu items
-        menu_items=()
-        loop=0
-        for playbook in "${playbooks[@]}"; do
-            file_name=$(basename "$playbook")
-            dir_path=$(dirname "$playbook")
-            menu_items+=("$loop" "$dir_path/$file_name")
-            ((loop++))
-        done
-        
-        selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
-            --title "📋 Select Playbook" \
-            --menu "Choose a playbook to run:" 20 70 12 \
-            "${menu_items[@]}" \
-            2>&1 >/dev/tty)
-        
-        dialog_exit=$?
-        
-        [ $dialog_exit -ne 0 ] && return 0
-        
-        # Ask for additional flags
-        additional_flags=$(dialog --backtitle "RoboHelp v$VERSION" \
-            --title "Additional Flags" \
-            --inputbox "Enter additional flags (e.g. remove) or leave empty:" 10 60 \
-            2>&1 >/dev/tty)
-        clear -x    
-    else
-        echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
-        echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
-        read -r selected_index additional_flags
-        echo
-    fi
-
-    if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
-	    echo -e "${RED} Invalid playbook selection.${NC}"
-	    return 1
-    fi
-
-    if command -v dialog &>/dev/null; then
-        dialog --backtitle "RoboHelp v$VERSION" \
-            --title "Ansible Vault" \
-            --yesno "Do you use Ansible Vault?" 7 40
-        vault_choice=$?
-        
-        if [ $vault_choice -eq 0 ]; then
-            vault_flag="--ask-vault-pass"
-        else
-            vault_flag="--ask-become-pass"
-        fi
-    else
-        echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
-        echo -e "${CYAN}<────────────────────────────────────>${NC}"
-        read -r ansible_vault_val
-        echo
-
-        case "${ansible_vault_val,,}" in
-            yes)
-                vault_flag="--ask-vault-pass"
-                ;;
-            no)
-                vault_flag="--ask-become-pass"
-                ;;
-            *)
-                echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
-                return 1
-                ;;
-        esac
-    fi
-
-    playbook="$(basename "${playbooks[$selected_index]}")"
-    extra_vars=()
-
-    # Only set extra_vars if flags are non-empty
-    if [ -n "$additional_flags" ];  then
-	    extra_vars=(--extra-vars "action=$additional_flags")
-    fi
-
-    echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
-    echo -e "${CYAN}🚩 Flags: ${vault_flag} ${extra_vars[*]}${NC}"
-    echo
-    echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
-    echo
-
-    sleep 5
-
-    if ansible-playbook -i hosts.yml "$playbook" "${extra_vars[@]}" $vault_flag -v; then
-	    log_actions "scs"
-    else
-	    log_actions "fail"
-    fi
-}
-
-playbook_actions() {
-    if ! find_playbook; then
-        return 1
-    fi
-
-    if [ "$1" = "run" ]; then
-        run_playbook
-    fi
-}
-
-live_fire() {
-    if command -v dialog &>/dev/null; then
-        live_fire_command=$(dialog --backtitle "RoboHelp v$VERSION" \
-            --title "Live-Fire Command" \
-            --inputbox "Which command would you like to Live-Fire?" 10 60 \
-            2>&1 >/dev/tty)
-        clear -x    
-        [ $? -ne 0 ] && return 0
-    else
-        echo
-        echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
-        echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
-        read -r live_fire_command
-        echo
-    fi
-
-    if command -v dialog &>/dev/null; then
-        live_fire_target=$(dialog --backtitle "RoboHelp v$VERSION" \
-            --title "Target Hosts" \
-            --menu "Which hosts should be targeted?" 11 60 2 \
-            "1" "All" \
-            "2" "Write Own (Single host or host groups)" \
-            2>&1 >/dev/tty)
-        
-        [ $? -ne 0 ] && return 0
-    else
-        echo -e "${CYAN} Which hosts should be targeted?${NC}"
-        echo -e "${CYAN}<───────────────────────────────────>${NC}"
-        echo -e "${YELLOW}> [1] All${NC}"
-        echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
-        echo
-        read -r live_fire_target
-    fi
-
-    case "${live_fire_target}" in
-        1)
-            ansible -i hosts.yml all -m shell -a "${live_fire_command}"
-            ;;
-        2)
-            if command -v dialog &>/dev/null; then
-                custom_target=$(dialog --backtitle "RoboHelp v$VERSION" \
-                    --title "Custom Target" \
-                    --inputbox "Enter host or group (e.g. webservers, nagios):" 10 60 \
-                    2>&1 >/dev/tty)
-                clear -x    
-                [ $? -ne 0 ] && return 0
-            else
-                echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
-                echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
-                echo
-                read -r custom_target
-            fi
-	    ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
-	    ;;
-	*)
-	    echo -e "${RED}Invalid option selected. Aborting.${NC}"
-	    ;;
-    esac
 }
 
 # System Health Check
@@ -1343,17 +1093,17 @@ network_diagnostics() {
     else
         net_option=$(dialog --backtitle "RoboHelp v$VERSION" \
             --title "🌐 Network Diagnostics" \
-            --menu "Choose an option:" 16 60 7 \
+            --menu "Choose an option:" 14 60 6 \
             "1" "DNS Lookup" \
             "2" "Traceroute/Ping utilities" \
             "3" "Network interface info" \
             "4" "Bandwidth monitoring" \
             "5" "Firewall status (ufw/iptables)" \
             "6" "Active connections" \
-            "7" "Exit" \
             2>&1 >/dev/tty)
+        dialog_exit=$?
         clear -x
-        [ $? -ne 0 ] && return 0
+        [ $dialog_exit -ne 0 ] && return 0
     fi
 
     dns_lookup() {
@@ -1368,8 +1118,9 @@ network_diagnostics() {
                 --title "DNS Lookup" \
                 --inputbox "Enter domain/hostname to lookup:" 10 50 \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x    
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
         else
             echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
             read -r domain
@@ -1407,15 +1158,17 @@ network_diagnostics() {
                 "1" "Ping" \
                 "2" "Traceroute" \
                 2>&1 >/dev/tty)
-            
-            [ $? -ne 0 ] && return 0
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
             
             target=$(dialog --backtitle "RoboHelp v$VERSION" \
                 --title "Traceroute/Ping" \
                 --inputbox "Enter target host/IP:" 10 50 \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x    
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
         else
             echo -e "${YELLOW}  [1] Ping${NC}"
             echo -e "${YELLOW}  [2] Traceroute${NC}"
@@ -1596,6 +1349,41 @@ network_diagnostics() {
 }
 
 disk_management() {
+
+    if ! check_dialog; then
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to Disk Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Disk Usage by Directory${NC}"
+        echo -e "${YELLOW}  [2] Find Largest Files${NC}"
+        echo -e "${YELLOW}  [3] Clean Package Cache${NC}"
+        echo -e "${YELLOW}  [4] Clean Journal Logs${NC}"
+        echo -e "${YELLOW}  [5] Empty Trash${NC}"
+        echo -e "${YELLOW}  [6] Find Duplicate Files${NC}"
+        echo -e "${YELLOW}  [7] Mount/Unmount Drives${NC}"
+        echo -e "${YELLOW}  [8] Exit${NC}"
+        echo
+        read -r disk_option
+    else
+        disk_option=$(dialog --clear --backtitle "RoboHelp v$VERSION" \
+            --title "💽 Disk Management" \
+            --menu "Choose an option:" 15 60 7 \
+            "1" "Disk Usage by Directory" \
+            "2" "Find Largest Files" \
+            "3" "Clean Package Cache" \
+            "4" "Clean Journal Logs" \
+            "5" "Empty Trash" \
+            "6" "Find Duplicate Files" \
+            "7" "Mount/Unmount Drives" \
+            2>&1 >/dev/tty)
+
+        dialog_exit=$?
+        clear -x    
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
+
     disk_usage_by_directory() {
         echo
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -1608,8 +1396,9 @@ disk_management() {
                 --title "Disk Usage" \
                 --inputbox "Enter directory path (default: current directory):" 10 60 "$PWD" \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x    
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
         else
             echo -e "${YELLOW}Enter directory path (default: current directory):${NC}"
             read -r target_dir
@@ -1644,15 +1433,17 @@ disk_management() {
                 --title "Find Largest Files" \
                 --inputbox "Enter directory to search (default: current directory):" 10 60 "$PWD" \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
             
             num_files=$(dialog --backtitle "RoboHelp v$VERSION" \
                 --title "Find Largest Files" \
                 --inputbox "How many files to show? (default: 20):" 10 60 "20" \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
         else
             echo -e "${YELLOW}Enter directory to search (default: current directory):${NC}"
             read -r search_dir
@@ -1752,7 +1543,6 @@ disk_management() {
                     "2" "1 week" \
                     "3" "2 weeks" \
                     "4" "1 month" \
-                    "5" "Cancel" \
                     2>&1 >/dev/tty)
                 clear -x    
                 [ $? -ne 0 ] && return 0
@@ -1851,8 +1641,9 @@ disk_management() {
                 --title "Find Duplicates" \
                 --inputbox "Enter directory to search:" 10 60 "$HOME" \
                 2>&1 >/dev/tty)
+            dialog_exit=$?
             clear -x    
-            [ $? -ne 0 ] && return 0
+            [ $dialog_exit -ne 0 ] && return 0
         else
             echo -e "${YELLOW}Enter directory to search (default: $HOME):${NC}"
             read -r search_dir
@@ -1872,44 +1663,145 @@ disk_management() {
         echo
     }
 
-    smart_status() {
-        :
-    }
-
     mount_unmount_drives() {
-        :
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}💾 Mount/Unmount Drives${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            mount_action=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Mount/Unmount Drives" \
+                --menu "Choose an action:" 12 60 4 \
+                "1" "List Mounted Drives" \
+                "2" "Mount a Drive" \
+                "3" "Unmount a Drive" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Choose an action:${NC}"
+            echo "  [1] List Mounted Drives"
+            echo "  [2] Mount a Drive"
+            echo "  [3] Unmount a Drive"
+            echo "  [4] Cancel"
+            echo
+            read -r mount_action
+        fi
+        
+        case "$mount_action" in
+            1)
+                echo -e "${CYAN}Currently Mounted Drives:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+                else
+                    mount | column -t
+                fi
+                echo
+                ;;
+            2)
+                # Mount a drive
+                echo -e "${CYAN}Available Block Devices:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+                else
+                    fdisk -l 2>/dev/null | grep -E '^/dev/'
+                fi
+                echo
+                
+                if command -v dialog &>/dev/null; then
+                    device=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Mount Drive" \
+                        --inputbox "Enter device to mount (e.g., /dev/sdb1):" 10 60 \
+                        2>&1 >/dev/tty)
+                    clear -x
+                    [ $? -ne 0 ] && return 0
+                    
+                    mount_point=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Mount Drive" \
+                        --inputbox "Enter mount point (e.g., /mnt/usb):" 10 60 \
+                        2>&1 >/dev/tty)
+                    clear -x
+                    [ $? -ne 0 ] && return 0
+                else
+                    echo -e "${YELLOW}Enter device to mount (e.g., /dev/sdb1):${NC}"
+                    read -r device
+                    
+                    echo -e "${YELLOW}Enter mount point (e.g., /mnt/usb):${NC}"
+                    read -r mount_point
+                fi
+                
+                if [ -z "$device" ] || [ -z "$mount_point" ]; then
+                    echo -e "${RED}❌ Device and mount point cannot be empty${NC}"
+                    return 1
+                fi
+                
+                if [ ! -b "$device" ]; then
+                    echo -e "${RED}❌ Device not found: $device${NC}"
+                    return 1
+                fi
+                
+                # Create mount point if it doesn't exist
+                if [ ! -d "$mount_point" ]; then
+                    echo -e "${CYAN}Creating mount point: $mount_point${NC}"
+                    sudo mkdir -p "$mount_point"
+                fi
+                
+                echo -e "${CYAN}Mounting $device to $mount_point...${NC}"
+                if sudo mount "$device" "$mount_point"; then
+                    echo -e "${GREEN}✅ Successfully mounted $device to $mount_point${NC}"
+                else
+                    echo -e "${RED}❌ Failed to mount $device${NC}"
+                fi
+                echo
+                ;;
+            3)
+                # Unmount a drive
+                echo -e "${CYAN}Currently Mounted Drives:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE | grep -v "^$"
+                else
+                    mount | column -t
+                fi
+                echo
+                
+                if command -v dialog &>/dev/null; then
+                    unmount_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Unmount Drive" \
+                        --inputbox "Enter device or mount point to unmount:" 10 60 \
+                        2>&1 >/dev/tty)
+                    clear -x
+                    [ $? -ne 0 ] && return 0
+                else
+                    echo -e "${YELLOW}Enter device or mount point to unmount:${NC}"
+                    read -r unmount_target
+                fi
+                
+                if [ -z "$unmount_target" ]; then
+                    echo -e "${RED}❌ Target cannot be empty${NC}"
+                    return 1
+                fi
+                
+                echo -e "${CYAN}Unmounting $unmount_target...${NC}"
+                if sudo umount "$unmount_target"; then
+                    echo -e "${GREEN}✅ Successfully unmounted $unmount_target${NC}"
+                else
+                    echo -e "${RED}❌ Failed to unmount $unmount_target${NC}"
+                    echo -e "${YELLOW}Tip: Check if any processes are using the mount point${NC}"
+                fi
+                echo
+                ;;
+            4|*)
+                echo -e "${YELLOW}Cancelled${NC}"
+                return 0
+                ;;
+        esac
     }
-
-    if command -v dialog &>/dev/null; then
-        disk_option=$(dialog --clear --backtitle "RoboHelp v$VERSION" \
-            --title "💽 Disk Management" \
-            --menu "Choose an option:" 16 60 7 \
-            "1" "Disk Usage by Directory" \
-            "2" "Find Largest Files" \
-            "3" "Clean Package Cache" \
-            "4" "Clean Journal Logs" \
-            "5" "Empty Trash" \
-            "6" "Find Duplicate Files" \
-            "7" "Exit" \
-            2>&1 >/dev/tty)
-        clear -x    
-        [ $? -ne 0 ] && return 0
-    else
-        echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${CYAN} Welcome to Disk Management${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo
-        echo -e "${YELLOW}  [1] Disk Usage by Directory${NC}"
-        echo -e "${YELLOW}  [2] Find Largest Files${NC}"
-        echo -e "${YELLOW}  [3] Clean Package Cache${NC}"
-        echo -e "${YELLOW}  [4] Clean Journal Logs${NC}"
-        echo -e "${YELLOW}  [5] Empty Trash${NC}"
-        echo -e "${YELLOW}  [6] Find Duplicate Files${NC}"
-        echo -e "${YELLOW}  [7] Exit${NC}"
-        echo
-        read -r disk_option
-    fi
 
     case "${disk_option}" in
         1)
@@ -1931,6 +1823,9 @@ disk_management() {
             find_duplicate_files
             ;;
         7)
+            mount_unmount_drives
+            ;;
+        8)
             exit 0
             ;;
         *)
@@ -1961,17 +1856,268 @@ ansible_deploy() {
     else
         option=$(dialog --backtitle "RoboHelp v$VERSION" \
             --title "🤖 Ansible Fast Management (AFM)" \
-            --menu "Choose an option:" 14 60 6 \
+            --menu "Choose an option:" 13 60 5 \
             "1" "Run Playbook (with Flags)" \
             "2" "Test Connection (Ping Hosts)" \
             "3" "Live-Fire Command" \
             "4" "View Inventory" \
             "5" "View Last Run Log" \
-            "6" "Exit" \
             2>&1 >/dev/tty)
+        dialog_exit=$?
         clear -x
-        [ $? -ne 0 ] && return 0
+        [ $dialog_exit -ne 0 ] && return 0
     fi
+
+    find_playbook() {
+        mapfile -t playbooks < <(find . -type f -name "*.yml")
+
+        if [ ${#playbooks[@]} -eq 0 ]; then
+            echo -e "${RED}🛑 No playbook files (.yml) found in current directory.${NC}"
+            return 1
+        fi
+
+        loop=-1
+        for playbook in "${playbooks[@]}"; do
+            ((loop++))
+            dir_path=$(dirname "$playbook")
+            file_name=$(basename "$playbook")
+            printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
+        done
+        return 0
+    }
+
+    view_inventory() {
+        local inv
+        if [ -f hosts.yml ]; then
+            inv="hosts.yml"
+        elif ls hosts.* >/dev/null 2>&1; then
+            # fallback to any hosts.* file, pick the first
+            inv=$(ls hosts.* 2>/dev/null | head -n1)
+        else
+            echo -e "${RED}🛑 No inventory file found (expected hosts.yml).${NC}"
+            return 1
+        fi
+        echo
+        echo -e "${YELLOW}📄 Showing Ansible inventory: $inv${NC}"
+        echo
+        if [ -n "$PAGER" ]; then
+            "$PAGER" "$inv" 2>/dev/null || cat "$inv"
+        else
+            cat "$inv"
+        fi
+    }
+
+    log_exists() {
+        log_path="$HOME/.log/afmrun.log"
+        if [ -f "$log_path" ]; then
+            return 0
+        else
+            mkdir -p "$(dirname "$log_path")"
+            touch "$log_path"
+        fi
+    }
+
+    log_write() {
+        case "$1" in
+        "scs")
+            echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
+            ;;
+        "ping")
+            echo "$timestamp - Ping ran successfully" >> "$log_path"
+            ;;
+        "fail")
+            echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
+            ;;
+        "pingfail")
+            echo "$timestamp - Running Ping with inventory file failed" >> "$log_path"
+            ;;
+        esac
+    }
+
+    log_actions() {
+        log_exists && log_write "$1"
+    }
+
+
+    run_ping() {
+        if ansible all -i hosts.* -m ping; then
+            log_actions "ping"
+        else
+            log_actions "pingfail"
+        fi
+    }
+
+    run_playbook() {
+        if command -v dialog &>/dev/null; then
+            # Build dialog menu items
+            menu_items=()
+            loop=0
+            for playbook in "${playbooks[@]}"; do
+                file_name=$(basename "$playbook")
+                dir_path=$(dirname "$playbook")
+                menu_items+=("$loop" "$dir_path/$file_name")
+                ((loop++))
+            done
+            
+            selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "📋 Select Playbook" \
+                --menu "Choose a playbook to run:" 20 70 12 \
+                "${menu_items[@]}" \
+                2>&1 >/dev/tty)
+            
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+
+            # Ask for additional flags
+            additional_flags=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Additional Flags" \
+                --inputbox "Enter additional flags (e.g. remove) or leave empty:" 10 60 \
+                2>&1 >/dev/tty)
+            
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+                
+        else
+            echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
+            read -r selected_index additional_flags
+            echo
+        fi
+
+        if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
+            echo -e "${RED} Invalid playbook selection.${NC}"
+            return 1
+        fi
+
+        if command -v dialog &>/dev/null; then
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Ansible Vault" \
+                --yesno "Do you use Ansible Vault?" 7 40
+            vault_choice=$?
+            clear -x
+            
+            if [ $vault_choice -eq 0 ]; then
+                vault_flag="--ask-vault-pass"
+            else
+                vault_flag="--ask-become-pass"
+            fi
+        else
+            echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
+            echo -e "${CYAN}<────────────────────────────────────>${NC}"
+            read -r ansible_vault_val
+            echo
+
+            case "${ansible_vault_val,,}" in
+                yes)
+                    vault_flag="--ask-vault-pass"
+                    ;;
+                no)
+                    vault_flag="--ask-become-pass"
+                    ;;
+                *)
+                    echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
+                    return 1
+                    ;;
+            esac
+        fi
+
+        playbook="$(basename "${playbooks[$selected_index]}")"
+        extra_vars=()
+
+        # Only set extra_vars if flags are non-empty
+        if [ -n "$additional_flags" ];  then
+            extra_vars=(--extra-vars "action=$additional_flags")
+        fi
+
+        echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
+        echo -e "${CYAN}🚩 Flags: ${vault_flag} ${extra_vars[*]}${NC}"
+        echo
+        echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
+        echo
+
+        sleep 5
+
+        if ansible-playbook -i hosts.yml "$playbook" "${extra_vars[@]}" $vault_flag -v; then
+            log_actions "scs"
+        else
+            log_actions "fail"
+        fi
+    }
+
+    playbook_actions() {
+        if ! find_playbook; then
+            return 1
+        fi
+
+        if [ "$1" = "run" ]; then
+            run_playbook
+        fi
+    }
+
+    live_fire() {
+        if command -v dialog &>/dev/null; then
+            live_fire_command=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Live-Fire Command" \
+                --inputbox "Which command would you like to Live-Fire?" 10 60 \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo
+            echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
+            echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
+            read -r live_fire_command
+            echo
+        fi
+
+        if command -v dialog &>/dev/null; then
+            live_fire_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Target Hosts" \
+                --menu "Which hosts should be targeted?" 11 60 2 \
+                "1" "All" \
+                "2" "Write Own (Single host or host groups)" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${CYAN} Which hosts should be targeted?${NC}"
+            echo -e "${CYAN}<───────────────────────────────────>${NC}"
+            echo -e "${YELLOW}> [1] All${NC}"
+            echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
+            echo
+            read -r live_fire_target
+        fi
+
+        case "${live_fire_target}" in
+            1)
+                ansible -i hosts.yml all -m shell -a "${live_fire_command}"
+                ;;
+            2)
+                if command -v dialog &>/dev/null; then
+                    custom_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Custom Target" \
+                        --inputbox "Enter host or group (e.g. webservers, nagios):" 10 60 \
+                        2>&1 >/dev/tty)
+                    dialog_exit=$?
+                    clear -x    
+                    [ $dialog_exit -ne 0 ] && return 0
+                else
+                    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
+                    echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
+                    echo
+                    read -r custom_target
+                fi
+            ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            ;;
+        esac
+    }
 
     if printf -- '%d' "${option}" > /dev/null 2>&1; then
 	    case "${option}" in
@@ -2022,7 +2168,7 @@ main() {
 	# Parse command-line flags
 	case "$1" in
 	    -pm|--package-management)
-		require_root
+        require_root
 		package_management
 		;;
 	    -sc|--system-config)
