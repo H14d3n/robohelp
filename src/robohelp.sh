@@ -43,7 +43,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
 # Variable Declaration
-VERSION="1.0.1"
+VERSION="2.0.0"
 GITHUB_REPO="h14d3n/robohelp"
 GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
 INSTALL_PATH="/usr/local/bin/robohelp"
@@ -58,6 +58,9 @@ autoclean_cmd=""
 remove_cmd=""
 purge_cmd=""
 search_cmd=""
+check_broken_cmd=""
+check_security_cmd=""
+dialog_install_asked=0
 
 # Colors
 RED='\033[0;31m'
@@ -171,6 +174,16 @@ det_release() {
 	    remove_cmd="sudo apt remove -y"
 	    purge_cmd="sudo apt purge -y"
 	    search_cmd="apt search"
+	    check_broken_cmd="dpkg -l 2>/dev/null | grep -c '^iU\|^iF' 2>/dev/null | xargs"
+	    check_security_cmd="apt list --upgradable 2>/dev/null | grep -i security | wc -l"
+	    service_manager="systemctl"
+	    service_list_cmd="systemctl list-units --type=service"
+	    service_start_cmd="sudo systemctl start"
+	    service_stop_cmd="sudo systemctl stop"
+	    service_restart_cmd="sudo systemctl restart"
+	    service_status_cmd="systemctl status"
+	    service_enable_cmd="sudo systemctl enable"
+	    service_disable_cmd="sudo systemctl disable"
 	    ;;
 	fedora)
         update_cmd="sudo dnf makecache -y"
@@ -182,6 +195,16 @@ det_release() {
 	    remove_cmd="sudo dnf remove -y"
         purge_cmd="sudo dnf remove -y"
         search_cmd="dnf search"
+	    check_broken_cmd="package-cleanup --problems 2>/dev/null | grep -c 'Problem' 2>/dev/null | xargs"
+	    check_security_cmd="dnf updateinfo list security 2>/dev/null | grep -c 'security'"
+	    service_manager="systemctl"
+	    service_list_cmd="systemctl list-units --type=service"
+	    service_start_cmd="sudo systemctl start"
+	    service_stop_cmd="sudo systemctl stop"
+	    service_restart_cmd="sudo systemctl restart"
+	    service_status_cmd="systemctl status"
+	    service_enable_cmd="sudo systemctl enable"
+	    service_disable_cmd="sudo systemctl disable"
 	    ;;
 	centos|rhel)
         update_cmd="sudo yum makecache -y"
@@ -193,6 +216,16 @@ det_release() {
 	    remove_cmd="sudo yum remove -y"
         purge_cmd="sudo yum remove -y"
         search_cmd="yum search"
+	    check_broken_cmd="package-cleanup --problems 2>/dev/null | grep -c 'Problem' 2>/dev/null | xargs"
+	    check_security_cmd="yum updateinfo list security 2>/dev/null | grep -c 'security'"
+	    service_manager="systemctl"
+	    service_list_cmd="systemctl list-units --type=service"
+	    service_start_cmd="sudo systemctl start"
+	    service_stop_cmd="sudo systemctl stop"
+	    service_restart_cmd="sudo systemctl restart"
+	    service_status_cmd="systemctl status"
+	    service_enable_cmd="sudo systemctl enable"
+	    service_disable_cmd="sudo systemctl disable"
 	    ;;
 	arch|manjarolinux)
         update_cmd="sudo pacman -Sy"
@@ -204,6 +237,16 @@ det_release() {
 	    remove_cmd="sudo pacman -R --noconfirm"
         purge_cmd="sudo pacman -Rns --noconfirm"
         search_cmd="pacman -Ss"
+	    check_broken_cmd="pacman -Qk 2>&1 | grep -c 'warning' 2>/dev/null | xargs"
+	    check_security_cmd="checkupdates 2>/dev/null | wc -l"
+	    service_manager="systemctl"
+	    service_list_cmd="systemctl list-units --type=service"
+	    service_start_cmd="sudo systemctl start"
+	    service_stop_cmd="sudo systemctl stop"
+	    service_restart_cmd="sudo systemctl restart"
+	    service_status_cmd="systemctl status"
+	    service_enable_cmd="sudo systemctl enable"
+	    service_disable_cmd="sudo systemctl disable"
 	    ;;
 	opensuse*|sles)
 	    update_cmd="sudo zypper refresh"
@@ -215,6 +258,16 @@ det_release() {
 	    remove_cmd="sudo zypper remove -y"
         purge_cmd="sudo zypper remove -y"
         search_cmd="zypper search"
+	    check_broken_cmd="unknown"
+	    check_security_cmd="zypper list-updates 2>/dev/null | tail -n +5 | wc -l"
+	    service_manager="systemctl"
+	    service_list_cmd="systemctl list-units --type=service"
+	    service_start_cmd="sudo systemctl start"
+	    service_stop_cmd="sudo systemctl stop"
+	    service_restart_cmd="sudo systemctl restart"
+	    service_status_cmd="systemctl status"
+	    service_enable_cmd="sudo systemctl enable"
+	    service_disable_cmd="sudo systemctl disable"
 	    ;;
 	*)
 	    echo -e "${RED} ❌ Unsupported distro: $distro. Please edit the script manually. ${NC}"
@@ -233,6 +286,119 @@ require_root() {
     fi
 }
 
+# Configure dialog colors for a sleek black theme
+setup_dialog_colors() {
+    export DIALOGRC="${TMPDIR:-/tmp}/.robohelp_dialogrc"
+    cat > "$DIALOGRC" <<'DIALOGEOF'
+# RoboHelp Dialog Color Theme - Sleek Black
+use_shadow = ON
+use_colors = ON
+
+# Screen colors (background)
+screen_color = (CYAN,BLACK,ON)
+
+# Shadow color
+shadow_color = (BLACK,BLACK,ON)
+
+# Dialog box
+dialog_color = (WHITE,BLUE,ON)
+
+# Dialog box title
+title_color = (CYAN,BLUE,ON)
+
+# Dialog box border
+border_color = (CYAN,BLUE,ON)
+border2_color = (CYAN,BLUE,ON)
+
+# Button colors
+button_active_color = (WHITE,CYAN,ON)
+button_inactive_color = (CYAN,BLUE,ON)
+button_key_active_color = (WHITE,CYAN,ON)
+button_key_inactive_color = (RED,BLUE,ON)
+button_label_active_color = (WHITE,CYAN,ON)
+button_label_inactive_color = (CYAN,BLUE,ON)
+
+# Input box colors
+inputbox_color = (WHITE,BLUE,ON)
+inputbox_border_color = (CYAN,BLUE,ON)
+inputbox_border2_color = (CYAN,BLUE,ON)
+
+# Search box
+searchbox_color = (WHITE,BLUE,ON)
+searchbox_title_color = (CYAN,BLUE,ON)
+searchbox_border_color = (CYAN,BLUE,ON)
+searchbox_border2_color = (CYAN,BLUE,ON)
+
+# Position indicator
+position_indicator_color = (CYAN,BLUE,ON)
+
+# Menu box
+menubox_color = (WHITE,BLUE,ON)
+menubox_border_color = (CYAN,BLUE,ON)
+menubox_border2_color = (CYAN,BLUE,ON)
+
+# Menu item
+item_color = (WHITE,BLUE,ON)
+item_selected_color = (WHITE,CYAN,ON)
+
+# Tag (menu item label)
+tag_color = (CYAN,BLUE,ON)
+tag_selected_color = (WHITE,CYAN,ON)
+tag_key_color = (YELLOW,BLUE,ON)
+tag_key_selected_color = (YELLOW,CYAN,ON)
+
+# Check box
+check_color = (WHITE,BLUE,ON)
+check_selected_color = (WHITE,CYAN,ON)
+
+# Up/down arrow
+uarrow_color = (CYAN,BLUE,ON)
+darrow_color = (CYAN,BLUE,ON)
+
+# Item help text
+itemhelp_color = (WHITE,BLUE,ON)
+
+# Form
+form_active_text_color = (WHITE,CYAN,ON)
+form_text_color = (WHITE,BLUE,ON)
+form_item_readonly_color = (CYAN,BLUE,ON)
+
+# Gauge (progress bar)
+gauge_color = (CYAN,BLACK,ON)
+DIALOGEOF
+}
+
+# Check if dialog is installed or if it was already asked, else offer to install it
+check_dialog() {
+    if ! command -v dialog &>/dev/null && [ "$dialog_install_asked" -eq 0 ]; then
+        echo
+        echo -e "${YELLOW}⚠️  'dialog' is not installed. Interactive menus will look better!${NC}"
+        echo -e "${CYAN}Would you like to install it now? [Y/n]${NC}"
+        read -r install_choice
+	dialog_install_asked=1
+        
+        if [[ "$install_choice" =~ ^[Yy]$ ]] || [[ -z "$install_choice" ]]; then
+            echo -e "${CYAN}Installing dialog...${NC}"
+            $install_cmd dialog
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✅ Dialog installed successfully!${NC}"
+                setup_dialog_colors
+                return 0
+            else
+                echo -e "${RED}❌ Failed to install dialog.${NC}"
+                return 1
+            fi
+	else
+	    return 1
+        fi
+    elif command -v dialog &>/dev/null; then
+    	setup_dialog_colors
+    	return 0
+    else
+    	return 1
+    fi
+}
+
 # Main Functions
 check_installed() {
     if command -v "$1" &> /dev/null; then
@@ -242,6 +408,148 @@ check_installed() {
     fi
 }
 
+package_management() {
+    
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📦 Package Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Update Package Repositories${NC}"
+        echo -e "${YELLOW}  [2] Upgrade Installed Packages${NC}"
+        echo -e "${YELLOW}  [3] Full System Upgrade${NC}"
+        echo -e "${YELLOW}  [4] Distribution Upgrade${NC}"
+        echo -e "${YELLOW}  [5] Remove Unnecessary Packages${NC}"
+        echo -e "${YELLOW}  [6] Clean Local Repository${NC}"
+        echo -e "${YELLOW}  [7] Install Package${NC}"
+        echo -e "${YELLOW}  [8] Remove Package${NC}"
+        echo -e "${YELLOW}  [9] Purge Package${NC}"
+        echo -e "${YELLOW}  [10] Search Package${NC}"
+        echo -e "${YELLOW}  [11] Exit${NC}"
+        echo
+        read -r pkg_option
+    else
+        pkg_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "📦 Package Management" \
+            --menu "Choose an option:" 17 60 10 \
+            "1" "Update Package Repositories" \
+            "2" "Upgrade Installed Packages" \
+            "3" "Full System Upgrade" \
+            "4" "Distribution Upgrade" \
+            "5" "Remove Unnecessary Packages" \
+            "6" "Clean Local Repository" \
+            "7" "Install Package" \
+            "8" "Remove Package" \
+            "9" "Purge Package" \
+            "10" "Search Package" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
+
+    case "${pkg_option}" in
+        1)
+            package_update
+            ;;
+        2)
+            package_upgrade
+            ;;
+        3)
+            full_upgrade
+            ;;
+        4)
+            dist_upgrade
+            ;;
+        5)
+            package_autorm
+            ;;
+        6)
+            package_autocls
+            ;;
+        7)
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Install Package" \
+                    --inputbox "Enter package name(s) to install (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                clear -x
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to install (space-separated):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
+            for pkg in $packages; do
+                package_install "$pkg"
+            done
+            ;;
+        8)
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Remove Package" \
+                    --inputbox "Enter package name(s) to remove (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                clear -x    
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to remove (space-separated):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
+            for pkg in $packages; do
+                package_remove "$pkg"
+            done
+            ;;
+        9)
+            if command -v dialog &>/dev/null; then
+                packages=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Purge Package" \
+                    --inputbox "Enter package name(s) to purge (space-separated):" 10 60 \
+                    2>&1 >/dev/tty)
+                clear -x
+                [ $? -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter package name(s) to purge (space-separated):${NC}"
+                echo -e "${CYAN}<────────────────────────────────────────────────>${NC}"
+                read -r packages
+            fi
+            for pkg in $packages; do
+                package_purge "$pkg"
+            done
+            ;;
+        10)
+            if command -v dialog &>/dev/null; then
+                term=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Search Package" \
+                    --inputbox "Enter search term:" 10 50 \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+            else
+                echo
+                echo -e "${CYAN}Enter search term:${NC}"
+                echo -e "${CYAN}<─────────────────>${NC}"
+                read -r term
+            fi
+            package_search "$term"
+            ;;
+        11)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            ;;
+    esac
+}
+
+# Package Management Functions
 package_update() {
     echo
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -402,7 +710,6 @@ package_search() {
     echo
 }
 
-
 full_upgrade() {
     echo
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -428,6 +735,230 @@ mv_robohelp() {
     fi
 }
 
+service_management() {
+    if ! command -v "$service_manager" &>/dev/null; then
+        echo
+        echo -e "${RED}❌ $service_manager not found. This feature requires systemd or compatible service manager.${NC}"
+        echo
+        return 1
+    fi
+    
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}⚙️  Service Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] List All Services${NC}"
+        echo -e "${YELLOW}  [2] List Running Services${NC}"
+        echo -e "${YELLOW}  [3] List Failed Services${NC}"
+        echo -e "${YELLOW}  [4] Start/Stop/Restart Service${NC}"
+        echo -e "${YELLOW}  [5] Enable/Disable Service${NC}"
+        echo -e "${YELLOW}  [6] Check Service Status${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r svc_option
+    else
+        svc_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "⚙️  Service Management" \
+            --menu "Choose an option:" 15 60 6 \
+            "1" "List All Services" \
+            "2" "List Running Services" \
+            "3" "List Failed Services" \
+            "4" "Start/Stop/Restart Service" \
+            "5" "Enable/Disable Service" \
+            "6" "Check Service Status" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
+    
+    case "${svc_option}" in
+        1)
+            echo
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${CYAN}📋 All Services${NC}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo
+            $service_list_cmd --all --no-pager
+            echo
+            ;;
+        2)
+            echo
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${CYAN}▶️  Running Services${NC}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo
+            $service_list_cmd --state=running --no-pager
+            echo
+            ;;
+        3)
+            echo
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${CYAN}❌ Failed Services${NC}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo
+            $service_list_cmd --state=failed --no-pager
+            echo
+            ;;
+        4)
+            echo
+            echo -e "${CYAN}📋 Current Services:${NC}"
+            $service_list_cmd --state=running --no-pager | head -n 20
+            echo
+            
+            if command -v dialog &>/dev/null; then
+                service_name=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Service Control" \
+                    --inputbox "Enter service name:" 10 50 \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+                
+                action=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Action for $service_name" \
+                    --menu "Choose action:" 11 50 3 \
+                    "1" "Start" \
+                    "2" "Stop" \
+                    "3" "Restart" \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+            else
+                echo -e "${CYAN}Enter service name:${NC}"
+                read -r service_name
+                echo
+                echo -e "${YELLOW}Choose action:${NC}"
+                echo "  [1] Start"
+                echo "  [2] Stop"
+                echo "  [3] Restart"
+                read -r action
+            fi
+            
+            [ -z "$service_name" ] && return 0
+            
+            echo
+            case "$action" in
+                1)
+                    echo -e "${CYAN}Starting $service_name...${NC}"
+                    $service_start_cmd "$service_name"
+                    ;;
+                2)
+                    echo -e "${CYAN}Stopping $service_name...${NC}"
+                    $service_stop_cmd "$service_name"
+                    ;;
+                3)
+                    echo -e "${CYAN}Restarting $service_name...${NC}"
+                    $service_restart_cmd "$service_name"
+                    ;;
+            esac
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✅ Operation successful${NC}"
+                echo
+                $service_status_cmd "$service_name" --no-pager
+            else
+                echo -e "${RED}❌ Operation failed${NC}"
+            fi
+            echo
+            ;;
+        5)
+            echo
+            echo -e "${CYAN}📋 Current Services:${NC}"
+            $service_list_cmd --no-pager | head -n 20
+            echo
+            
+            if command -v dialog &>/dev/null; then
+                service_name=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Service Enable/Disable" \
+                    --inputbox "Enter service name:" 10 50 \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+                
+                action=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Action for $service_name" \
+                    --menu "Choose action:" 10 50 2 \
+                    "1" "Enable (start on boot)" \
+                    "2" "Disable (don't start on boot)" \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+            else
+                echo -e "${CYAN}Enter service name:${NC}"
+                read -r service_name
+                echo
+                echo -e "${YELLOW}Choose action:${NC}"
+                echo "  [1] Enable (start on boot)"
+                echo "  [2] Disable (don't start on boot)"
+                read -r action
+            fi
+            
+            [ -z "$service_name" ] && return 0
+            
+            echo
+            case "$action" in
+                1)
+                    echo -e "${CYAN}Enabling $service_name...${NC}"
+                    $service_enable_cmd "$service_name"
+                    ;;
+                2)
+                    echo -e "${CYAN}Disabling $service_name...${NC}"
+                    $service_disable_cmd "$service_name"
+                    ;;
+            esac
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✅ Operation successful${NC}"
+            else
+                echo -e "${RED}❌ Operation failed${NC}"
+            fi
+            echo
+            ;;
+        6)
+            echo
+            echo -e "${CYAN}📋 Current Services:${NC}"
+            $service_list_cmd --no-pager | head -n 20
+            echo
+            
+            if command -v dialog &>/dev/null; then
+                service_name=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Check Service Status" \
+                    --inputbox "Enter service name:" 10 50 \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+            else
+                echo -e "${CYAN}Enter service name:${NC}"
+                read -r service_name
+            fi
+            
+            [ -z "$service_name" ] && return 0
+            
+            echo
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${CYAN}📊 Status: $service_name${NC}"
+            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo
+            $service_status_cmd "$service_name" --no-pager
+            echo
+            ;;
+        7)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected.${NC}"
+            ;;
+    esac
+}
+
 ssh_config() {
     if ! check_installed "ssh" || ! check_installed "ssh-keygen"; then
         echo
@@ -436,63 +967,136 @@ ssh_config() {
         return 1
     fi
 
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
-    echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
-    echo -e "${YELLOW}  [3] Copy SSH Key to Remote Host${NC}"
-    echo -e "${YELLOW}  [4] Edit SSH Config File${NC}"
-    echo -e "${YELLOW}  [5] Exit${NC}"
-    echo
-
-    read -r ssh_option
-    echo
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
+        echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
+        echo -e "${YELLOW}  [3] Copy SSH Key to Remote Host${NC}"
+        echo -e "${YELLOW}  [4] Edit SSH Config File${NC}"
+        echo -e "${YELLOW}  [5] Exit${NC}"
+        echo
+        read -r ssh_option
+        echo
+    else
+        ssh_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🔐 SSH Configuration" \
+            --menu "Choose an option:" 12 60 4 \
+            "1" "Establish SSH connection" \
+            "2" "Generate SSH Key Pair" \
+            "3" "Copy SSH Key to Remote Host" \
+            "4" "Edit SSH Config File" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
 
     case "${ssh_option}" in
         1)
-            echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
-            echo -e "${YELLOW}> [1] Yes${NC}"
-            echo -e "${YELLOW}> [2] No${NC}"
-            echo
-            read -r use_previous
-            echo
-
-            if [ "${use_previous}" = "1" ]; then
-                echo -e "${CYAN} Available SSH commands:${NC}"
-                echo -e "${CYAN}<──────────────────────>${NC}"
+            if command -v dialog &>/dev/null; then
+                dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "SSH Connection" \
+                    --yesno "Do you want to use a previously used command?" 7 50
+                use_previous=$?
+            else
+                echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
+                echo -e "${YELLOW}> [1] Yes${NC}"
+                echo -e "${YELLOW}> [2] No${NC}"
                 echo
+                read -r use_previous_input
+                echo
+                [ "$use_previous_input" = "1" ] && use_previous=0 || use_previous=1
+            fi
 
-                if find_ssh_commands; then
-                    echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
-                    echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-                    read -r selected_index
+            if [ "${use_previous}" = "0" ]; then
+                # Check if commands file exists first
+                if [ ! -f ~/.ssh/.robohelp_lsc.txt ]; then
+                    echo -e "${RED}⚠️  No previous SSH commands found.${NC}"
                     echo
-
-                    if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#ssh_commands[@]}" ]; then
-                        echo -e "${RED}Invalid SSH command selection.${NC}"
-                        return 1
-                    fi
-
-                    selected_command="${ssh_commands[$selected_index]}"
-                    echo -e "${CYAN}Reusing command: ssh ${selected_command}${NC}"
-                    echo
-                    ssh ${selected_command}
-                    return 0
-                else
                     echo -e "${YELLOW}Falling back to manual entry...${NC}"
                     echo
+                else
+                    # Load commands into array
+                    mapfile -t ssh_commands < ~/.ssh/.robohelp_lsc.txt
+                    
+                    if [ ${#ssh_commands[@]} -eq 0 ]; then
+                        echo -e "${YELLOW}⚠️  No SSH commands found in history.${NC}"
+                        echo -e "${YELLOW}Falling back to manual entry...${NC}"
+                        echo
+                    else
+                        if command -v dialog &>/dev/null; then
+                            # Build dialog menu items
+                            menu_items=()
+                            loop=0
+                            for command in "${ssh_commands[@]}"; do
+                                menu_items+=("$loop" "ssh $command")
+                                ((loop++))
+                            done
+                            
+                            selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
+                                --title "🔐 Select SSH Command" \
+                                --menu "Choose a previous SSH connection:" 20 70 12 \
+                                "${menu_items[@]}" \
+                                2>&1 >/dev/tty)
+                            
+                            dialog_exit=$?
+                            clear -x
+                            [ $dialog_exit -ne 0 ] && return 0
+                        else
+                            # Print header BEFORE the list
+                            echo -e "${CYAN} Available SSH commands:${NC}"
+                            echo -e "${CYAN}<──────────────────────>${NC}"
+                            echo
+                            
+                            # Now print the list
+                            loop=-1
+                            for command in "${ssh_commands[@]}"; do
+                                ((loop++))
+                                printf '[%d] ssh %s\n\n' "$loop" "$command"
+                            done
+                            
+                            echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
+                            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                            read -r selected_index
+                            echo
+                        fi
+
+                        if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#ssh_commands[@]}" ]; then
+                            echo -e "${RED}Invalid SSH command selection.${NC}"
+                            return 1
+                        fi
+
+                        selected_command="${ssh_commands[$selected_index]}"
+                        echo -e "${CYAN}Reusing command: ssh ${selected_command}${NC}"
+                        echo
+                        ssh ${selected_command}
+                        return 0
+                    fi
                 fi
             fi
 
-            echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
-            echo
-
-            read -r "ssh_user" "ssh_host" "ssh_port"
+            if command -v dialog &>/dev/null; then
+                ssh_input=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "SSH Connection" \
+                    --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
+                    2>&1 >/dev/tty)
+                
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+                read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
+            else
+                echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                echo
+                read -r "ssh_user" "ssh_host" "ssh_port"
+            fi
 
             mkdir -p ~/.ssh
             ssh_command="${ssh_user}@${ssh_host} -p ${ssh_port:-22}"
@@ -519,11 +1123,21 @@ ssh_config() {
             fi
             ;;
         3)
-            echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
-            echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
-            echo
-
-            read -r ssh_user ssh_host ssh_port
+            if command -v dialog &>/dev/null; then
+                ssh_input=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Copy SSH Key" \
+                    --inputbox "Enter username, host and port (e.g. user host 22):" 10 60 \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x
+                [ $dialog_exit -ne 0 ] && return 0
+                read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
+            else
+                echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
+                echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
+                echo
+                read -r ssh_user ssh_host ssh_port
+            fi
 
             ssh-copy-id -p "${ssh_port:-22}" "${ssh_user}@${ssh_host}"
             ;;
@@ -536,195 +1150,1900 @@ ssh_config() {
             return 0
             ;;
         *)
-            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            echo -e "${RED}Invalid option selected.${NC}"
             ;;
     esac
 }
 
-find_playbook() {
-    mapfile -t playbooks < <(find . -type f -name "*.yml")
-    loop=-1
-    for playbook in "${playbooks[@]}"; do
-        ((loop++))
-        dir_path=$(dirname "$playbook")
-        file_name=$(basename "$playbook")
-        printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
-    done
+# System Health Check
+health_check() {
+    echo
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${CYAN}🏥 System Health Check${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
+
+    # Check Disk Space
+    echo -e "${YELLOW}📊 Disk Space:${NC}"
+    df -h / | tail -n 1 | awk '{printf "   Root: %s / %s (%s used)\n", $3, $2, $5}'
+    
+    disk_usage=$(df / | tail -n 1 | awk '{print $5}' | sed 's/%//')
+    if [ "$disk_usage" -gt 90 ]; then
+        echo -e "   ${RED}⚠️  WARNING: Disk usage is critically high (${disk_usage}%)${NC}"
+    elif [ "$disk_usage" -gt 75 ]; then
+        echo -e "   ${YELLOW}⚠️  Disk usage is getting high (${disk_usage}%)${NC}"
+    else
+        echo -e "   ${GREEN}✅ Disk usage is healthy (${disk_usage}%)${NC}"
+    fi
+    echo
+
+    # Check System Load
+    echo -e "${YELLOW}⚙️ System Load:${NC}"
+    if command -v uptime &>/dev/null; then
+        load_avg=$(uptime | awk -F'load average:' '{print $2}' | xargs)
+        echo -e "   Load Average: $load_avg"
+        
+        cpu_cores=$(nproc 2>/dev/null || echo "1")
+        load_1min=$(echo "$load_avg" | awk '{print $1}' | sed 's/,//')
+        
+        # Compare load to CPU cores (basic threshold)
+        if command -v bc &>/dev/null; then
+            high_load=$(echo "$load_1min > $cpu_cores * 2" | bc -l)
+            if [ "$high_load" -eq 1 ]; then
+                echo -e "   ${RED}⚠️  System load is high${NC}"
+            else
+                echo -e "   ${GREEN}✅ System load is normal${NC}"
+            fi
+        else
+            # Fallback without bc
+            load_1min_int=$(echo "$load_1min" | cut -d'.' -f1)
+            threshold=$((cpu_cores * 2))
+            if [ "$load_1min_int" -gt "$threshold" ]; then
+                echo -e "   ${RED}⚠️  System load is high${NC}"
+            else
+                echo -e "   ${GREEN}✅ System load is normal${NC}"
+            fi
+        fi
+        echo -e "   ${CYAN}CPU Cores: $cpu_cores${NC}"
+    else
+        echo -e "   ${YELLOW}⚠️  Unable to check system load${NC}"
+    fi
+    echo
+
+    # Check for Broken Packages
+    echo -e "${YELLOW}📦 Broken Packages:${NC}"
+    if [ "$check_broken_cmd" = "unknown" ] || [ -z "$check_broken_cmd" ]; then
+        echo -e "   ${YELLOW}ℹ️  Package check not implemented for $distro${NC}"
+    else
+        broken=$(eval "$check_broken_cmd" 2>/dev/null)
+        broken=${broken:-0}
+        if [ "$broken" -gt 0 ] 2>/dev/null; then
+            echo -e "   ${RED}⚠️  Found $broken broken package(s)${NC}"
+            case "$distro" in
+                ubuntu|debian|kali)
+                    echo -e "   ${CYAN}Run: sudo dpkg --configure -a${NC}"
+                    ;;
+                arch|manjarolinux)
+                    echo -e "   ${CYAN}Run: sudo pacman -Qk to see details${NC}"
+                    ;;
+            esac
+        else
+            echo -e "   ${GREEN}✅ No broken packages detected${NC}"
+        fi
+    fi
+    echo
+
+    # Check for Security Updates
+    echo -e "${YELLOW}🔒 Security Updates:${NC}"
+    if [ "$check_security_cmd" = "unknown" ] || [ -z "$check_security_cmd" ]; then
+        echo -e "   ${YELLOW}ℹ️  Security check not implemented for $distro${NC}"
+    else
+        case "$distro" in
+            ubuntu|debian|kali)
+                sudo -n apt update &>/dev/null 2>&1 || true
+                security_updates=$(eval "$check_security_cmd" 2>/dev/null | xargs)
+                total_updates=$(apt list --upgradable 2>/dev/null | tail -n +2 | wc -l | xargs)
+                security_updates=${security_updates:-0}
+                total_updates=${total_updates:-0}
+                
+                if [ "$security_updates" -gt 0 ] 2>/dev/null; then
+                    echo -e "   ${RED}⚠️  $security_updates security update(s) available${NC}"
+                    echo -e "   ${CYAN}Run: robohelp -pur${NC}"
+                elif [ "$total_updates" -gt 0 ] 2>/dev/null; then
+                    echo -e "   ${YELLOW}ℹ️  $total_updates update(s) available${NC}"
+                    echo -e "   ${CYAN}Run: robohelp -pur${NC}"
+                else
+                    echo -e "   ${GREEN}✅ System is up to date${NC}"
+                fi
+                ;;
+            arch|manjarolinux)
+                if command -v checkupdates &>/dev/null; then
+                    updates=$(eval "$check_security_cmd" 2>/dev/null | xargs)
+                    updates=${updates:-0}
+                    if [ "$updates" -gt 0 ] 2>/dev/null; then
+                        echo -e "   ${YELLOW}⚠️  $updates update(s) available${NC}"
+                        echo -e "   ${CYAN}Run: robohelp -pur${NC}"
+                    else
+                        echo -e "   ${GREEN}✅ System is up to date${NC}"
+                    fi
+                else
+                    echo -e "   ${YELLOW}ℹ️  Install 'pacman-contrib' for update checking${NC}"
+                fi
+                ;;
+            fedora|centos|rhel|opensuse*)
+                updates=$(eval "$check_security_cmd" 2>/dev/null | xargs)
+                updates=${updates:-0}
+                if [ "$updates" -gt 0 ] 2>/dev/null; then
+                    if [[ "$distro" == "fedora" || "$distro" == "centos" || "$distro" == "rhel" ]]; then
+                        echo -e "   ${RED}⚠️  Security updates available${NC}"
+                    else
+                        echo -e "   ${YELLOW}⚠️  $updates update(s) available${NC}"
+                    fi
+                    echo -e "   ${CYAN}Run: robohelp -pur${NC}"
+                else
+                    echo -e "   ${GREEN}✅ System is up to date${NC}"
+                fi
+                ;;
+            *)
+                echo -e "   ${YELLOW}ℹ️  Security check not yet configured for $distro${NC}"
+                ;;
+        esac
+    fi
+    echo
+
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✅ Health check completed${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo
 }
 
-find_ssh_commands() {
-    if [ ! -f ~/.ssh/.robohelp_lsc.txt ]; then
-        echo -e "${RED}⚠️  No previous SSH commands found.${NC}"
+network_diagnostics() {
+
+    if ! check_dialog; then
+        # Fallback to old menu
         echo
-        return 1
-    fi
-
-    mapfile -t ssh_commands < ~/.ssh/.robohelp_lsc.txt
-
-    if [ ${#ssh_commands[@]} -eq 0 ]; then
-        echo -e "${YELLOW}⚠️  No SSH commands found in history.${NC}"
-        return 1
-    fi
-
-    loop=-1
-    for command in "${ssh_commands[@]}"; do
-        ((loop++))
-        printf '[%d] ssh %s\n\n' "$loop" "$command"
-    done
-}
-
-view_inventory() {
-    local inv
-    if [ -f hosts.yml ]; then
-        inv="hosts.yml"
-    elif ls hosts.* >/dev/null 2>&1; then
-        # fallback to any hosts.* file, pick the first
-        inv=$(ls hosts.* 2>/dev/null | head -n1)
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to Network Diagnostics${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] DNS Lookup${NC}"
+        echo -e "${YELLOW}  [2] Traceroute/Ping utilities${NC}"
+        echo -e "${YELLOW}  [3] Network interface info${NC}"
+        echo -e "${YELLOW}  [4] Bandwidth monitoring${NC}"
+        echo -e "${YELLOW}  [5] Firewall status (ufw/iptables)${NC}"
+        echo -e "${YELLOW}  [6] Active connections${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r net_option
     else
-        echo -e "${RED}🛑 No inventory file found (expected hosts.yml).${NC}"
-        return 1
+        net_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🌐 Network Diagnostics" \
+            --menu "Choose an option:" 14 60 6 \
+            "1" "DNS Lookup" \
+            "2" "Traceroute/Ping utilities" \
+            "3" "Network interface info" \
+            "4" "Bandwidth monitoring" \
+            "5" "Firewall status (ufw/iptables)" \
+            "6" "Active connections" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
     fi
-    echo
-    echo -e "${YELLOW}📄 Showing Ansible inventory: $inv${NC}"
-    echo
-    if [ -n "$PAGER" ]; then
-        "$PAGER" "$inv" 2>/dev/null || cat "$inv"
-    else
-        cat "$inv"
-    fi
-}
 
+    dns_lookup() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔍 DNS Lookup${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            domain=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "DNS Lookup" \
+                --inputbox "Enter domain/hostname to lookup:" 10 50 \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter domain/hostname to lookup:${NC}"
+            read -r domain
+        fi
+        
+        if command -v dig &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using dig:${NC}"
+            dig "$domain"
+        elif command -v nslookup &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using nslookup:${NC}"
+            nslookup "$domain"
+        elif command -v host &>/dev/null; then
+            echo
+            echo -e "${CYAN}Using host:${NC}"
+            host "$domain"
+        else
+            echo -e "${RED}❌ No DNS tools available. Install dig, nslookup, or host.${NC}"
+        fi
+        echo
+    }
 
-log_exists() {
-    log_path="$HOME/.log/afmrun.log"
-    if [ -f "$log_path" ]; then
-        return 0
-    else
-	    mkdir -p "$(dirname "$log_path")"
-	    touch "$log_path"
-    fi
-}
+    traceroute_ping() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🛰️  Traceroute/Ping Utilities${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            trace_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Traceroute/Ping" \
+                --menu "Choose utility:" 10 50 2 \
+                "1" "Ping" \
+                "2" "Traceroute" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+            
+            target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Traceroute/Ping" \
+                --inputbox "Enter target host/IP:" 10 50 \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}  [1] Ping${NC}"
+            echo -e "${YELLOW}  [2] Traceroute${NC}"
+            echo
+            read -r trace_option
+            
+            echo -e "${YELLOW}Enter target host/IP:${NC}"
+            read -r target
+            echo
+        fi
+        
+        case "${trace_option}" in
+            1)
+                if command -v ping &>/dev/null; then
+                    echo -e "${CYAN}Pinging $target (Ctrl+C to stop)...${NC}"
+                    ping -c 4 "$target"
+                else
+                    echo -e "${RED}❌ ping command not found${NC}"
+                fi
+                ;;
+            2)
+                if command -v traceroute &>/dev/null; then
+                    echo -e "${CYAN}Tracing route to $target...${NC}"
+                    traceroute "$target"
+                elif command -v tracepath &>/dev/null; then
+                    echo -e "${CYAN}Tracing route to $target...${NC}"
+                    tracepath "$target"
+                else
+                    echo -e "${RED}❌ traceroute/tracepath not found${NC}"
+                fi
+                ;;
+            *)
+                echo -e "${RED}Invalid option${NC}"
+                ;;
+        esac
+        echo
+    }
 
-log_write() {
-    case "$1" in
-    "scs")
-        echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
- 	    ;;
-    "ping")
-	    echo "$timestamp - Ping ran successfully" >> "$log_path"
-	    ;;
-    "fail")
-	    echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
-	    ;;
-    "pingfail")
-	    echo "$timestamp - Running Ping with inventory file failed" >> "$log_path"
-	    ;;
+    network_info() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🌐 Network Interface Information${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ip &>/dev/null; then
+            echo -e "${YELLOW}IP Addresses:${NC}"
+            ip -br addr show
+            echo
+            echo -e "${YELLOW}Routing Table:${NC}"
+            ip route
+        elif command -v ifconfig &>/dev/null; then
+            echo -e "${YELLOW}Network Interfaces:${NC}"
+            ifconfig
+            echo
+            echo -e "${YELLOW}Routing Table:${NC}"
+            route -n
+        else
+            echo -e "${RED}❌ No network tools available (ip or ifconfig)${NC}"
+        fi
+        echo
+    }
+
+    bandwidth_monitor() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📊 Bandwidth Monitoring${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v iftop &>/dev/null; then
+            echo -e "${CYAN}Starting iftop (requires sudo, Ctrl+C to quit)...${NC}"
+            echo
+            sudo iftop
+        elif command -v nethogs &>/dev/null; then
+            echo -e "${CYAN}Starting nethogs (requires sudo, Ctrl+C to quit)...${NC}"
+            echo
+            sudo nethogs
+        elif command -v vnstat &>/dev/null; then
+            echo -e "${CYAN}Network statistics:${NC}"
+            vnstat
+        else
+            echo -e "${YELLOW}⚠️  No bandwidth monitoring tools found.${NC}"
+            echo -e "${CYAN}Install one of: iftop, nethogs, vnstat${NC}"
+            echo
+            echo -e "${YELLOW}Showing basic network statistics:${NC}"
+            if command -v netstat &>/dev/null; then
+                netstat -i
+            elif [ -f /proc/net/dev ]; then
+                cat /proc/net/dev
+            fi
+        fi
+        echo
+    }
+
+    firewall_status() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔥 Firewall Status${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ufw &>/dev/null; then
+            echo -e "${YELLOW}UFW Status:${NC}"
+            sudo ufw status verbose
+            echo
+        fi
+        
+        if command -v iptables &>/dev/null; then
+            echo -e "${YELLOW}iptables Rules:${NC}"
+            sudo iptables -L -n -v --line-numbers
+            echo
+        fi
+        
+        if command -v firewall-cmd &>/dev/null; then
+            echo -e "${YELLOW}Firewalld Status:${NC}"
+            sudo firewall-cmd --list-all
+            echo
+        fi
+        
+        if ! command -v ufw &>/dev/null && ! command -v iptables &>/dev/null && ! command -v firewall-cmd &>/dev/null; then
+            echo -e "${YELLOW}⚠️  No firewall tools detected${NC}"
+        fi
+        echo
+    }
+
+    active_connections() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔌 Active Network Connections${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v ss &>/dev/null; then
+            echo -e "${YELLOW}Listening ports:${NC}"
+            ss -tulpn
+            echo
+            echo -e "${YELLOW}Established connections:${NC}"
+            ss -tn state established
+        elif command -v netstat &>/dev/null; then
+            echo -e "${YELLOW}Listening ports:${NC}"
+            netstat -tulpn
+            echo
+            echo -e "${YELLOW}Established connections:${NC}"
+            netstat -tn | grep ESTABLISHED
+        else
+            echo -e "${RED}❌ No network tools available (ss or netstat)${NC}"
+        fi
+        echo
+    }
+
+    case "${net_option}" in
+        1)
+            dns_lookup
+            ;;
+        2)
+            traceroute_ping
+            ;;
+        3)
+            network_info
+            ;;
+        4)
+            bandwidth_monitor
+            ;;
+        5)
+            firewall_status
+            ;;
+        6)
+            active_connections
+            ;;
+        7)
+            exit 0
+            ;;
+        *)
+            echo "Unsupported option"
+            ;;
     esac
 }
 
-log_actions() {
-    log_exists && log_write "$1"
-}
+disk_management() {
 
-
-run_ping() {
-    if ansible all -i hosts.* -m ping; then
-      log_actions "ping"
+    if ! check_dialog; then
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to Disk Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Disk Usage by Directory${NC}"
+        echo -e "${YELLOW}  [2] Find Largest Files${NC}"
+        echo -e "${YELLOW}  [3] Clean Package Cache${NC}"
+        echo -e "${YELLOW}  [4] Clean Journal Logs${NC}"
+        echo -e "${YELLOW}  [5] Empty Trash${NC}"
+        echo -e "${YELLOW}  [6] Find Duplicate Files${NC}"
+        echo -e "${YELLOW}  [7] Mount/Unmount Drives${NC}"
+        echo -e "${YELLOW}  [8] Exit${NC}"
+        echo
+        read -r disk_option
     else
-      log_actions "pingfail"
+        disk_option=$(dialog --clear --backtitle "RoboHelp v$VERSION" \
+            --title "💽 Disk Management" \
+            --menu "Choose an option:" 15 60 7 \
+            "1" "Disk Usage by Directory" \
+            "2" "Find Largest Files" \
+            "3" "Clean Package Cache" \
+            "4" "Clean Journal Logs" \
+            "5" "Empty Trash" \
+            "6" "Find Duplicate Files" \
+            "7" "Mount/Unmount Drives" \
+            2>&1 >/dev/tty)
+
+        dialog_exit=$?
+        clear -x    
+        [ $dialog_exit -ne 0 ] && return 0
     fi
-}
 
-run_playbook() {
-    echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
-    echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
-    read -r selected_index additional_flags
-    echo
+    disk_usage_by_directory() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📊 Disk Usage by Directory${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            target_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Disk Usage" \
+                --inputbox "Enter directory path (default: current directory):" 10 60 "$PWD" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory path (default: current directory):${NC}"
+            read -r target_dir
+            [ -z "$target_dir" ] && target_dir="$PWD"
+        fi
+        
+        if [ ! -d "$target_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $target_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Analyzing disk usage in: $target_dir${NC}"
+        echo
+        
+        if command -v du &>/dev/null; then
+            du -h --max-depth=1 "$target_dir" 2>/dev/null | sort -hr | head -20
+        else
+            echo -e "${RED}❌ 'du' command not found${NC}"
+        fi
+        echo
+    }
 
-    if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
-	    echo -e "${RED} Invalid playbook selection.${NC}"
-	    return 1
-    fi
+    find_largest_files() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📁 Find Largest Files${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            search_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Largest Files" \
+                --inputbox "Enter directory to search (default: current directory):" 10 60 "$PWD" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+            
+            num_files=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Largest Files" \
+                --inputbox "How many files to show? (default: 20):" 10 60 "20" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory to search (default: current directory):${NC}"
+            read -r search_dir
+            [ -z "$search_dir" ] && search_dir="$PWD"
+            
+            echo -e "${YELLOW}How many files to show? (default: 20):${NC}"
+            read -r num_files
+            [ -z "$num_files" ] && num_files=20
+        fi
+        
+        if [ ! -d "$search_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $search_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Searching for largest files in: $search_dir${NC}"
+        echo -e "${YELLOW}This may take a while...${NC}"
+        echo
+        
+        if command -v find &>/dev/null; then
+            find "$search_dir" -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n "$num_files"
+        else
+            echo -e "${RED}❌ 'find' command not found${NC}"
+        fi
+        echo
+    }
 
-    echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
-    echo -e "${CYAN}<────────────────────────────────────>${NC}"
-    read -r ansible_vault_val
-    echo
+    clean_package_cache() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🧹 Clean Package Cache${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        echo -e "${YELLOW}Current cache usage:${NC}"
+        
+        if [ -d "/var/cache/apt/archives" ]; then
+            apt_cache=$(du -sh /var/cache/apt/archives 2>/dev/null | cut -f1)
+            echo -e "${CYAN}APT cache: ${apt_cache:-Unknown}${NC}"
+        fi
+        
+        if [ -d "/var/cache/pacman/pkg" ]; then
+            pacman_cache=$(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)
+            echo -e "${CYAN}Pacman cache: ${pacman_cache:-Unknown}${NC}"
+        fi
+        
+        if [ -d "/var/cache/dnf" ]; then
+            dnf_cache=$(du -sh /var/cache/dnf 2>/dev/null | cut -f1)
+            echo -e "${CYAN}DNF cache: ${dnf_cache:-Unknown}${NC}"
+        fi
+        
+        echo
+        echo -e "${YELLOW}Do you want to clean the package cache? [y/N]${NC}"
+        read -r confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            if command -v apt-get &>/dev/null; then
+                echo -e "${CYAN}Cleaning APT cache...${NC}"
+                sudo apt-get clean
+                sudo apt-get autoclean
+            fi
+            
+            if command -v pacman &>/dev/null; then
+                echo -e "${CYAN}Cleaning Pacman cache...${NC}"
+                sudo pacman -Sc --noconfirm
+            fi
+            
+            if command -v dnf &>/dev/null; then
+                echo -e "${CYAN}Cleaning DNF cache...${NC}"
+                sudo dnf clean all
+            fi
+            
+            echo -e "${GREEN}✅ Package cache cleaned${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+        fi
+        echo
+    }
 
-    case "${ansible_vault_val,,}" in
-	    yes)
-		    vault_flag="--ask-vault-pass"
-	        ;;
-	    no)
-		    vault_flag="--ask-become-pass"
-		    ;;
-	    *)
-		    echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
-		    return 1
-		    ;;
+    clean_journal_logs() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📝 Clean Journal Logs${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v journalctl &>/dev/null; then
+            echo -e "${YELLOW}Current journal size:${NC}"
+            journalctl --disk-usage
+            echo
+            
+            if command -v dialog &>/dev/null; then
+                retention=$(dialog --backtitle "RoboHelp v$VERSION" \
+                    --title "Clean Journal Logs" \
+                    --menu "Keep logs for how long?" 14 60 5 \
+                    "1" "2 days" \
+                    "2" "1 week" \
+                    "3" "2 weeks" \
+                    "4" "1 month" \
+                    2>&1 >/dev/tty)
+                dialog_exit=$?
+                clear -x    
+                [ $dialog_exit -ne 0 ] && return 0
+            else
+                echo -e "${YELLOW}Keep logs for:${NC}"
+                echo "  [1] 2 days"
+                echo "  [2] 1 week"
+                echo "  [3] 2 weeks"
+                echo "  [4] 1 month"
+                echo "  [5] Cancel"
+                read -r retention
+            fi
+            
+            case "$retention" in
+                1) time="2d" ;;
+                2) time="1w" ;;
+                3) time="2w" ;;
+                4) time="1M" ;;
+                5|*) echo -e "${YELLOW}Cancelled${NC}"; return 0 ;;
+            esac
+            
+            echo -e "${CYAN}Cleaning logs older than $time...${NC}"
+            sudo journalctl --vacuum-time="$time"
+            echo
+            echo -e "${GREEN}✅ Journal logs cleaned${NC}"
+        else
+            echo -e "${RED}❌ journalctl not found (systemd not available)${NC}"
+        fi
+        echo
+    }
+
+    empty_trash() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🗑️  Empty Trash${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        trash_dirs=(
+            "$HOME/.local/share/Trash"
+            "$HOME/.Trash"
+        )
+        
+        total_size=0
+        for trash_dir in "${trash_dirs[@]}"; do
+            if [ -d "$trash_dir" ]; then
+                size=$(du -sb "$trash_dir" 2>/dev/null | cut -f1)
+                if [ -n "$size" ] && [ "$size" -gt 0 ]; then
+                    human_size=$(du -sh "$trash_dir" 2>/dev/null | cut -f1)
+                    echo -e "${CYAN}Trash location: $trash_dir (${human_size})${NC}"
+                    total_size=$((total_size + size))
+                fi
+            fi
+        done
+        
+        if [ "$total_size" -eq 0 ]; then
+            echo -e "${GREEN}✅ Trash is already empty${NC}"
+            echo
+            return 0
+        fi
+        
+        echo
+        echo -e "${YELLOW}Do you want to empty the trash? [y/N]${NC}"
+        read -r confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            for trash_dir in "${trash_dirs[@]}"; do
+                if [ -d "$trash_dir" ]; then
+                    echo -e "${CYAN}Emptying: $trash_dir${NC}"
+                    rm -rf "${trash_dir:?}"/* 2>/dev/null
+                fi
+            done
+            echo -e "${GREEN}✅ Trash emptied${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+        fi
+        echo
+    }
+
+    find_duplicate_files() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔍 Find Duplicate Files${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if ! command -v fdupes &>/dev/null; then
+            echo -e "${YELLOW}⚠️  'fdupes' is not installed${NC}"
+            echo -e "${CYAN}Install with: robohelp -pi fdupes${NC}"
+            echo
+            return 1
+        fi
+        
+        if command -v dialog &>/dev/null; then
+            search_dir=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Find Duplicates" \
+                --inputbox "Enter directory to search:" 10 60 "$HOME" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Enter directory to search (default: $HOME):${NC}"
+            read -r search_dir
+            [ -z "$search_dir" ] && search_dir="$HOME"
+        fi
+        
+        if [ ! -d "$search_dir" ]; then
+            echo -e "${RED}❌ Directory not found: $search_dir${NC}"
+            return 1
+        fi
+        
+        echo -e "${CYAN}Searching for duplicate files in: $search_dir${NC}"
+        echo -e "${YELLOW}This may take a while...${NC}"
+        echo
+        
+        fdupes -r "$search_dir"
+        echo
+    }
+
+    mount_unmount_drives() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}💾 Mount/Unmount Drives${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            mount_action=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Mount/Unmount Drives" \
+                --menu "Choose an action:" 12 60 4 \
+                "1" "List Mounted Drives" \
+                "2" "Mount a Drive" \
+                "3" "Unmount a Drive" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${YELLOW}Choose an action:${NC}"
+            echo "  [1] List Mounted Drives"
+            echo "  [2] Mount a Drive"
+            echo "  [3] Unmount a Drive"
+            echo "  [4] Cancel"
+            echo
+            read -r mount_action
+        fi
+        
+        case "$mount_action" in
+            1)
+                echo -e "${CYAN}Currently Mounted Drives:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+                else
+                    mount | column -t
+                fi
+                echo
+                ;;
+            2)
+                # Mount a drive
+                echo -e "${CYAN}Available Block Devices:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+                else
+                    fdisk -l 2>/dev/null | grep -E '^/dev/'
+                fi
+                echo
+                
+                if command -v dialog &>/dev/null; then
+                    echo -e "${YELLOW}Press any key to continue...${NC}"
+                    read -n 1 -s -r
+                    device=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Mount Drive" \
+                        --inputbox "Enter device to mount (e.g., /dev/sdb1):" 10 60 \
+                        2>&1 >/dev/tty)
+                    dialog_exit=$?
+                    clear -x
+                    [ $dialog_exit -ne 0 ] && return 0
+                    
+                    mount_point=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Mount Drive" \
+                        --inputbox "Enter mount point (e.g., /mnt/usb):" 10 60 \
+                        2>&1 >/dev/tty)
+                    dialog_exit=$?
+                    clear -x
+                    [ $dialog_exit -ne 0 ] && return 0
+                else
+                    echo -e "${YELLOW}Enter device to mount (e.g., /dev/sdb1):${NC}"
+                    read -r device
+                    
+                    echo -e "${YELLOW}Enter mount point (e.g., /mnt/usb):${NC}"
+                    read -r mount_point
+                fi
+                
+                if [ -z "$device" ] || [ -z "$mount_point" ]; then
+                    echo -e "${RED}❌ Device and mount point cannot be empty${NC}"
+                    return 1
+                fi
+                
+                if [ ! -b "$device" ]; then
+                    echo -e "${RED}❌ Device not found: $device${NC}"
+                    return 1
+                fi
+                
+                # Create mount point if it doesn't exist
+                if [ ! -d "$mount_point" ]; then
+                    echo -e "${CYAN}Creating mount point: $mount_point${NC}"
+                    sudo mkdir -p "$mount_point"
+                fi
+                
+                echo -e "${CYAN}Mounting $device to $mount_point...${NC}"
+                if sudo mount "$device" "$mount_point"; then
+                    echo -e "${GREEN}✅ Successfully mounted $device to $mount_point${NC}"
+                else
+                    echo -e "${RED}❌ Failed to mount $device${NC}"
+                fi
+                echo
+                ;;
+            3)
+                # Unmount a drive
+                echo -e "${CYAN}Currently Mounted Drives:${NC}"
+                echo
+                if command -v lsblk &>/dev/null; then
+                    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE | grep -v "^$"
+                else
+                    mount | column -t
+                fi
+                echo
+                
+                if command -v dialog &>/dev/null; then
+                    echo -e "${YELLOW}Press any key to continue...${NC}"
+                    read -n 1 -s -r
+                    unmount_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Unmount Drive" \
+                        --inputbox "Enter device or mount point to unmount:" 10 60 \
+                        2>&1 >/dev/tty)
+                    dialog_exit=$?
+                    clear -x
+                    [ $dialog_exit -ne 0 ] && return 0
+                else
+                    echo -e "${YELLOW}Enter device or mount point to unmount:${NC}"
+                    read -r unmount_target
+                fi
+                
+                if [ -z "$unmount_target" ]; then
+                    echo -e "${RED}❌ Target cannot be empty${NC}"
+                    return 1
+                fi
+                
+                echo -e "${CYAN}Unmounting $unmount_target...${NC}"
+                if sudo umount "$unmount_target"; then
+                    echo -e "${GREEN}✅ Successfully unmounted $unmount_target${NC}"
+                else
+                    echo -e "${RED}❌ Failed to unmount $unmount_target${NC}"
+                    echo -e "${YELLOW}Tip: Check if any processes are using the mount point${NC}"
+                fi
+                echo
+                ;;
+            4|*)
+                echo -e "${YELLOW}Cancelled${NC}"
+                return 0
+                ;;
+        esac
+    }
+
+    case "${disk_option}" in
+        1)
+            disk_usage_by_directory
+            ;;
+        2)
+            find_largest_files
+            ;;
+        3)
+            clean_package_cache
+            ;;
+        4)
+            clean_journal_logs
+            ;;
+        5)
+            empty_trash
+            ;;
+        6)
+            find_duplicate_files
+            ;;
+        7)
+            mount_unmount_drives
+            ;;
+        8)
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected.${NC}"
+            ;;
     esac
+}
 
-    playbook="$(basename "${playbooks[$selected_index]}")"
-    extra_vars=()
+# Troubleshooting Wizard Functions
+troubleshooting_wizard() {
 
-    # Only set extra_vars if flags are non-empty
-    if [ -n "$additional_flags" ];  then
-	    extra_vars=(--extra-vars "action=$additional_flags")
-    fi
-
-    echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
-    echo -e "${CYAN}🚩 Flags: ${vault_flag} ${extra_vars[*]}${NC}"
-    echo
-    echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
-    echo
-
-    sleep 5
-
-    if ansible-playbook -i hosts.yml "$playbook" "${extra_vars[@]}" $vault_flag -v; then
-	    log_actions "scs"
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Troubleshooting Wizard${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Select the problem you're experiencing:${NC}"
+        echo
+        echo -e "${YELLOW}  [1] System Won't Boot${NC}"
+        echo -e "${YELLOW}  [2] Network Issues${NC}"
+        echo -e "${YELLOW}  [3] High CPU Usage${NC}"
+        echo -e "${YELLOW}  [4] Out of Disk Space${NC}"
+        echo -e "${YELLOW}  [5] Service Won't Start${NC}"
+        echo -e "${YELLOW}  [6] SSH Connection Issues${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r ts_option
     else
-	    log_actions "fail"
+        ts_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🔧 Troubleshooting Wizard" \
+            --menu "Select the problem you're experiencing:" 16 60 6 \
+            "1" "System Won't Boot" \
+            "2" "Network Issues" \
+            "3" "High CPU Usage" \
+            "4" "Out of Disk Space" \
+            "5" "Service Won't Start" \
+            "6" "SSH Connection Issues" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
     fi
+
+    troubleshoot_boot() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 System Boot Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Checking system boot logs...${NC}"
+        echo
+        
+        if command -v journalctl &>/dev/null; then
+            echo -e "${CYAN}📋 Recent boot errors:${NC}"
+            sudo journalctl -b -p err --no-pager | tail -n 20
+            echo
+            echo -e "${CYAN}📋 Failed services:${NC}"
+            systemctl --failed --no-pager
+            echo
+        else
+            echo -e "${YELLOW}⚠️  journalctl not available, checking dmesg...${NC}"
+            dmesg | grep -i "error\|fail" | tail -n 20
+            echo
+        fi
+        
+        echo -e "${YELLOW}Step 2: Common boot issues and solutions:${NC}"
+        echo
+        echo -e "${CYAN}• Check disk space:${NC} df -h"
+        echo -e "${CYAN}• Check filesystem:${NC} sudo fsck (from recovery mode)"
+        echo -e "${CYAN}• Check GRUB:${NC} sudo update-grub"
+        echo -e "${CYAN}• Check fstab:${NC} cat /etc/fstab"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Boot Troubleshooting Actions" \
+                --yesno "Would you like to check your /etc/fstab file now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}📋 Current /etc/fstab configuration:${NC}"
+                echo
+                cat /etc/fstab
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Would you like to check your /etc/fstab file? [y/N]${NC}"
+            read -r check_fstab
+            if [[ "$check_fstab" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}📋 Current /etc/fstab configuration:${NC}"
+                echo
+                cat /etc/fstab
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ Boot diagnostics complete.${NC}"
+        echo
+    }
+
+    troubleshoot_network() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Network Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Running comprehensive network diagnostics...${NC}"
+        echo
+        
+        # Use existing network diagnostics
+        network_diagnostics
+        
+        echo
+        echo -e "${YELLOW}Additional troubleshooting steps:${NC}"
+        echo
+        echo -e "${YELLOW}Network-related services:${NC}"
+        if command -v "$service_manager" &>/dev/null; then
+            $service_list_cmd --all --no-pager | grep -E "(network|NetworkManager|networking|dhcp|resolved)" | head -n 10 || echo "No network services found"
+        fi
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${CYAN}• Restart network service:${NC}"
+        if command -v "$service_manager" &>/dev/null; then
+            echo -e "  $service_restart_cmd NetworkManager"
+            echo -e "  $service_restart_cmd networking"
+        else
+            echo -e "  sudo service network-manager restart"
+            echo -e "  sudo service networking restart"
+        fi
+        echo
+        echo -e "${CYAN}• Reset DNS:${NC}"
+        echo -e "  sudo systemd-resolve --flush-caches (systemd)"
+        echo -e "  sudo resolvectl flush-caches (newer systems)"
+        echo
+        echo -e "${CYAN}• Check firewall:${NC}"
+        echo -e "  sudo ufw status (Ubuntu/Debian)"
+        echo -e "  sudo firewall-cmd --list-all (Fedora/RHEL)"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Network Actions" \
+                --yesno "Would you like to restart NetworkManager now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🔄 Restarting NetworkManager...${NC}"
+                $service_restart_cmd NetworkManager 2>/dev/null || sudo service network-manager restart 2>/dev/null
+                echo -e "${GREEN}✅ NetworkManager restarted.${NC}"
+                echo
+            else
+                clear -x
+            fi
+        fi
+    }
+
+    troubleshoot_cpu() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 High CPU Usage Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Identifying high CPU processes...${NC}"
+        echo
+        
+        echo -e "${CYAN}📊 Current CPU usage:${NC}"
+        top -bn1 | head -n 12
+        echo
+        
+        echo -e "${CYAN}📊 Top 10 CPU-consuming processes:${NC}"
+        ps aux --sort=-%cpu | head -n 11
+        echo
+        
+        echo -e "${YELLOW}Step 2: Common causes and solutions:${NC}"
+        echo
+        echo -e "${CYAN}• High system load:${NC}"
+        uptime
+        echo
+        echo -e "${CYAN}• Check for runaway processes in the list above${NC}"
+        echo -e "${CYAN}• Use 'htop' for interactive monitoring (install with: robohelp -pi htop)${NC}"
+        echo -e "${CYAN}• Kill a process: kill -9 <PID>${NC}"
+        echo -e "${CYAN}• Renice a process: renice -n 10 -p <PID>${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            # Get top 15 CPU processes and format for dialog menu
+        mapfile -t process_list < <(ps aux --sort=-%cpu | awk 'NR>1 && NR<=16 {printf "%s|%s|%s|%s\n", $2, $3, $11, $0}')
+        
+        if [ ${#process_list[@]} -gt 0 ]; then
+            # Build dialog menu items
+            menu_items=()
+            for proc in "${process_list[@]}"; do
+                IFS='|' read -r pid cpu cmd full_line <<< "$proc"
+                # Truncate command if too long
+                if [ ${#cmd} -gt 35 ]; then
+                    cmd="${cmd:0:32}..."
+                fi
+                menu_items+=("$pid" "CPU:${cpu}% - $cmd")
+            done
+            
+            selected_pid=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Kill Process - Select from Top CPU Consumers" \
+                --menu "Choose a process to kill (or Cancel to skip):" 20 75 12 \
+                "${menu_items[@]}" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            
+            if [ $dialog_exit -eq 0 ] && [ -n "$selected_pid" ]; then
+                # Get process details for confirmation
+                proc_details=$(ps -p "$selected_pid" -o pid,pcpu,pmem,comm --no-headers 2>/dev/null)
+                
+                if [ -n "$proc_details" ]; then
+                    echo
+                    echo -e "${CYAN}📋 Process details:${NC}"
+                    echo "  $proc_details"
+                    echo
+                    
+                    dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Confirm Kill Process" \
+                        --yesno "Are you sure you want to kill process $selected_pid?\n\n$proc_details" 10 60
+                    dialog_exit=$?                    
+                    if [ $dialog_exit -eq 0 ]; then
+                        clear -x
+                        echo
+                        echo -e "${YELLOW}Attempting to kill process $selected_pid...${NC}"
+                        if sudo kill -9 "$selected_pid" 2>/dev/null; then
+                            echo -e "${GREEN}✅ Process $selected_pid killed successfully.${NC}"
+                        else
+                            echo -e "${RED}❌ Failed to kill process $selected_pid. It may have already terminated.${NC}"
+                        fi
+                        echo
+                    else
+                        clear -x
+                        echo
+                        echo -e "${YELLOW}⚠️  Kill operation cancelled.${NC}"
+                        echo
+                    fi
+                else
+                    echo
+                    echo -e "${RED}❌ Process $selected_pid no longer exists.${NC}"
+                    echo
+                fi
+            fi
+        else
+            echo -e "${RED}❌ Could not retrieve process list.${NC}"
+            echo
+        fi
+    else
+        # Fallback for non-dialog systems
+        echo
+        echo -e "${CYAN}Top CPU processes:${NC}"
+        ps aux --sort=-%cpu | head -n 11 | awk 'NR>1 {printf "[%s] CPU:%s%% - %s\n", $2, $3, $11}'
+        echo
+        echo -e "${CYAN}Enter PID to kill (or press Enter to skip):${NC}"
+        read -r pid
+        if [ -n "$pid" ]; then
+            echo
+            echo -e "${YELLOW}Attempting to kill process $pid...${NC}"
+            if sudo kill -9 "$pid" 2>/dev/null; then
+                echo -e "${GREEN}✅ Process $pid killed successfully.${NC}"
+            else
+                echo -e "${RED}❌ Failed to kill process $pid. Check if PID is valid.${NC}"
+            fi
+            echo
+        fi
+    fi
+    
+    echo -e "${GREEN}✅ CPU diagnostics complete.${NC}"
+    echo
 }
 
-playbook_actions() {
-    find_playbook # Is always executed
+    troubleshoot_disk() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Disk Space Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Analyzing disk usage...${NC}"
+        echo
+        
+        echo -e "${CYAN}📊 Filesystem usage:${NC}"
+        df -h
+        echo
+        
+        echo -e "${CYAN}📊 Largest directories in /home:${NC}"
+        du -h --max-depth=1 /home 2>/dev/null | sort -hr | head -n 10
+        echo
+        
+        echo -e "${CYAN}📊 Largest directories in /var:${NC}"
+        sudo du -h --max-depth=1 /var 2>/dev/null | sort -hr | head -n 10
+        echo
+        
+        echo -e "${YELLOW}Step 2: Cleanup options:${NC}"
+        echo
+        echo -e "${CYAN}• Clean package cache:${NC}"
+        echo -e "  robohelp -acl"
+        echo -e "${CYAN}• Remove old kernels (Ubuntu/Debian):${NC}"
+        echo -e "  robohelp -arm"
+        echo -e "${CYAN}• Clean journal logs:${NC}"
+        echo -e "  robohelp -dm -> Clean Journal logs"
+        echo -e "${CYAN}• Find large files:${NC}"
+        echo -e "  robohelp -dm -> Find Largest Files"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Disk Cleanup" \
+                --yesno "Would you like to clean package cache and remove unnecessary packages now?" 8 60
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🧹 Cleaning package cache...${NC}"
+                package_autocls
+                echo
+                echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+                package_autorm
+                echo
+                echo -e "${GREEN}✅ Cleanup complete. Check disk usage with: df -h${NC}"
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Clean package cache and remove unnecessary packages now? [y/N]${NC}"
+            read -r do_cleanup
+            if [[ "$do_cleanup" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}🧹 Cleaning package cache...${NC}"
+                package_autocls
+                echo
+                echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+                package_autorm
+                echo
+                echo -e "${GREEN}✅ Cleanup complete. Check disk usage with: df -h${NC}"
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ Disk space diagnostics complete.${NC}"
+        echo
+    }
 
-    if [ "$1" = "run" ]; then
-        run_playbook
-    fi
+    troubleshoot_service() {
+        if ! command -v "$service_manager" &>/dev/null; then
+            echo
+            echo -e "${RED}❌ $service_manager not found. This troubleshooter requires systemd or compatible service manager.${NC}"
+            echo
+            return 1
+        fi
+        
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}📋 Running Services${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        $service_list_cmd --state=running --no-pager | head -n 20
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}❌ Failed Services${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        $service_list_cmd --state=failed --no-pager
+        echo
+
+	echo -e "${YELLOW}Press any key to continue...${NC}"
+	read -n 1 -s -r
+        
+        if command -v dialog &>/dev/null; then
+            service_name=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Service Troubleshooting" \
+                --inputbox "Enter the service name to troubleshoot:" 10 50 \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${CYAN}Enter the service name to troubleshoot:${NC}"
+            read -r service_name
+        fi
+        
+        if [ -z "$service_name" ]; then
+            echo -e "${RED}❌ No service name provided.${NC}"
+            echo
+            return 1
+        fi
+        
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Troubleshooting: $service_name${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        echo -e "${YELLOW}Step 1: Checking service status...${NC}"
+        echo
+        $service_status_cmd "$service_name" --no-pager
+        echo
+        
+        echo -e "${YELLOW}Step 2: Checking service logs...${NC}"
+        echo
+        echo -e "${CYAN}📋 Recent logs for $service_name:${NC}"
+        sudo journalctl -u "$service_name" -n 30 --no-pager
+        echo
+        
+        echo -e "${YELLOW}Step 3: Common solutions:${NC}"
+        echo
+        echo -e "${CYAN}• Restart service:${NC} $service_restart_cmd $service_name"
+        echo -e "${CYAN}• Enable on boot:${NC} $service_enable_cmd $service_name"
+        echo -e "${CYAN}• Check config:${NC} $service_manager cat $service_name"
+        echo -e "${CYAN}• Reset failed state:${NC} $service_manager reset-failed $service_name"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Service Actions" \
+                --yesno "Would you like to restart $service_name now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🔄 Restarting $service_name...${NC}"
+                if $service_restart_cmd "$service_name"; then
+                    echo -e "${GREEN}✅ Service restarted successfully.${NC}"
+                    echo
+                    $service_status_cmd "$service_name" --no-pager
+                else
+                    echo -e "${RED}❌ Failed to restart service. Check logs above.${NC}"
+                fi
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Restart $service_name now? [y/N]${NC}"
+            read -r do_restart
+            if [[ "$do_restart" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}🔄 Restarting $service_name...${NC}"
+                if $service_restart_cmd "$service_name"; then
+                    echo -e "${GREEN}✅ Service restarted successfully.${NC}"
+                    echo
+                    $service_status_cmd "$service_name" --no-pager
+                else
+                    echo -e "${RED}❌ Failed to restart service. Check logs above.${NC}"
+                fi
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ Service diagnostics complete.${NC}"
+        echo
+    }
+
+    troubleshoot_ssh() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 SSH Connection Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        if ! command -v sshd &>/dev/null && ! command -v ssh &>/dev/null; then
+            echo -e "${RED}❌ SSH is not installed.${NC}"
+            echo -e "${CYAN}Install with: robohelp -pi openssh-server openssh-client${NC}"
+            echo
+            return 1
+        fi
+        
+        echo -e "${YELLOW}Available SSH-related services:${NC}"
+        echo
+        $service_list_cmd --all --no-pager | grep -E "(ssh|sshd)" || echo "No SSH services found"
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        
+        echo -e "${YELLOW}Step 1: Checking SSH service status...${NC}"
+        echo
+        
+        if command -v "$service_manager" &>/dev/null; then
+            $service_status_cmd ssh --no-pager 2>/dev/null || $service_status_cmd sshd --no-pager 2>/dev/null
+        else
+            service ssh status 2>/dev/null || service sshd status 2>/dev/null
+        fi
+        echo
+        
+        echo -e "${YELLOW}Step 2: Checking SSH configuration...${NC}"
+        echo
+        
+        if [ -f /etc/ssh/sshd_config ]; then
+            echo -e "${CYAN}📋 Key SSH settings:${NC}"
+            grep -E "^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication)" /etc/ssh/sshd_config 2>/dev/null || echo "Default settings in use"
+            echo
+        fi
+        
+        echo -e "${YELLOW}Step 3: Checking network and firewall...${NC}"
+        echo
+        echo -e "${CYAN}📊 Listening SSH ports:${NC}"
+        ss -tlnp | grep -E "(:22|ssh)" || netstat -tlnp | grep -E "(:22|ssh)" 2>/dev/null
+        echo
+        
+        echo -e "${CYAN}📊 Firewall status:${NC}"
+        if command -v ufw &>/dev/null; then
+            sudo ufw status | grep -E "(Status|22|ssh)"
+        elif command -v firewall-cmd &>/dev/null; then
+            sudo firewall-cmd --list-services | grep ssh && echo "SSH is allowed" || echo "SSH may be blocked"
+        else
+            echo "No common firewall detected"
+        fi
+        echo
+        
+        echo -e "${YELLOW}Step 4: Common solutions:${NC}"
+        echo
+        echo -e "${CYAN}• Start SSH service:${NC}"
+        echo -e "  $service_start_cmd ssh (or sshd)"
+        echo -e "${CYAN}• Enable SSH on boot:${NC}"
+        echo -e "  $service_enable_cmd ssh (or sshd)"
+        echo -e "${CYAN}• Allow SSH through firewall:${NC}"
+        echo -e "  sudo ufw allow 22/tcp (Ubuntu/Debian)"
+        echo -e "  sudo firewall-cmd --add-service=ssh --permanent (Fedora/RHEL)"
+        echo -e "${CYAN}• Check SSH logs:${NC}"
+        echo -e "  sudo journalctl -u ssh -n 50 (or sshd)"
+        echo -e "${CYAN}• Test connection:${NC}"
+        echo -e "  ssh -v user@hostname"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "SSH Actions" \
+                --yesno "Would you like to start/restart SSH service now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🔄 Starting SSH service...${NC}"
+                $service_start_cmd ssh 2>/dev/null || $service_start_cmd sshd 2>/dev/null || \
+                sudo service ssh start 2>/dev/null || sudo service sshd start 2>/dev/null
+                
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}✅ SSH service started.${NC}"
+                else
+                    echo -e "${RED}❌ Failed to start SSH service.${NC}"
+                fi
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Start/restart SSH service now? [y/N]${NC}"
+            read -r do_start
+            if [[ "$do_start" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}🔄 Starting SSH service...${NC}"
+                $service_start_cmd ssh 2>/dev/null || $service_start_cmd sshd 2>/dev/null || \
+                sudo service ssh start 2>/dev/null || sudo service sshd start 2>/dev/null
+                
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}✅ SSH service started.${NC}"
+                else
+                    echo -e "${RED}❌ Failed to start SSH service.${NC}"
+                fi
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ SSH diagnostics complete.${NC}"
+        echo
+    }
+
+    case "${ts_option}" in
+        1)
+            troubleshoot_boot
+            ;;
+        2)
+            troubleshoot_network
+            ;;
+        3)
+            troubleshoot_cpu
+            ;;
+        4)
+            troubleshoot_disk
+            ;;
+        5)
+            troubleshoot_service
+            ;;
+        6)
+            troubleshoot_ssh
+            ;;
+        7)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected.${NC}"
+            ;;
+    esac
 }
 
-live_fire() {
+ansible_deploy() {
+
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Troubleshooting Wizard${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Select the problem you're experiencing:${NC}"
+        echo
+        echo -e "${YELLOW}  [1] System Won't Boot${NC}"
+        echo -e "${YELLOW}  [2] Network Issues${NC}"
+        echo -e "${YELLOW}  [3] High CPU Usage${NC}"
+        echo -e "${YELLOW}  [4] Out of Disk Space${NC}"
+        echo -e "${YELLOW}  [5] Service Won't Start${NC}"
+        echo -e "${YELLOW}  [6] SSH Connection Issues${NC}"
+        echo -e "${YELLOW}  [7] Exit${NC}"
+        echo
+        read -r ts_option
+    else
+        ts_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🔧 Troubleshooting Wizard" \
+            --menu "Select the problem you're experiencing:" 16 60 6 \
+            "1" "System Won't Boot" \
+            "2" "Network Issues" \
+            "3" "High CPU Usage" \
+            "4" "Out of Disk Space" \
+            "5" "Service Won't Start" \
+            "6" "SSH Connection Issues" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
+
+    troubleshoot_boot() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 System Boot Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Checking system boot logs...${NC}"
+        echo
+        
+        if command -v journalctl &>/dev/null; then
+            echo -e "${CYAN}📋 Recent boot errors:${NC}"
+            sudo journalctl -b -p err --no-pager | tail -n 20
+            echo
+            echo -e "${CYAN}📋 Failed services:${NC}"
+            systemctl --failed --no-pager
+            echo
+        else
+            echo -e "${YELLOW}⚠️  journalctl not available, checking dmesg...${NC}"
+            dmesg | grep -i "error\|fail" | tail -n 20
+            echo
+        fi
+        
+        echo -e "${YELLOW}Step 2: Common boot issues and solutions:${NC}"
+        echo
+        echo -e "${CYAN}• Check disk space:${NC} df -h"
+        echo -e "${CYAN}• Check filesystem:${NC} sudo fsck (from recovery mode)"
+        echo -e "${CYAN}• Check GRUB:${NC} sudo update-grub"
+        echo -e "${CYAN}• Check fstab:${NC} cat /etc/fstab"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Boot Troubleshooting Actions" \
+                --yesno "Would you like to check your /etc/fstab file now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}📋 Current /etc/fstab configuration:${NC}"
+                echo
+                cat /etc/fstab
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Would you like to check your /etc/fstab file? [y/N]${NC}"
+            read -r check_fstab
+            if [[ "$check_fstab" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}📋 Current /etc/fstab configuration:${NC}"
+                echo
+                cat /etc/fstab
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ Boot diagnostics complete.${NC}"
+        echo
+    }
+
+    troubleshoot_network() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Network Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Running comprehensive network diagnostics...${NC}"
+        echo
+        
+        # Use existing network diagnostics
+        network_diagnostics
+        
+        echo
+        echo -e "${YELLOW}Additional troubleshooting steps:${NC}"
+        echo
+        echo -e "${CYAN}• Restart network service:${NC}"
+        if command -v systemctl &>/dev/null; then
+            echo -e "  sudo systemctl restart NetworkManager"
+            echo -e "  sudo systemctl restart networking"
+        else
+            echo -e "  sudo service network-manager restart"
+            echo -e "  sudo service networking restart"
+        fi
+        echo
+        echo -e "${CYAN}• Reset DNS:${NC}"
+        echo -e "  sudo systemd-resolve --flush-caches (systemd)"
+        echo -e "  sudo resolvectl flush-caches (newer systems)"
+        echo
+        echo -e "${CYAN}• Check firewall:${NC}"
+        echo -e "  sudo ufw status (Ubuntu/Debian)"
+        echo -e "  sudo firewall-cmd --list-all (Fedora/RHEL)"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Network Actions" \
+                --yesno "Would you like to restart NetworkManager now?" 8 50
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🔄 Restarting NetworkManager...${NC}"
+                sudo systemctl restart NetworkManager 2>/dev/null || sudo service network-manager restart 2>/dev/null
+                echo -e "${GREEN}✅ NetworkManager restarted.${NC}"
+                echo
+            else
+                clear -x
+            fi
+        fi
+    }
+
+    troubleshoot_cpu() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 High CPU Usage Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Identifying high CPU processes...${NC}"
+        echo
+        
+        echo -e "${CYAN}📊 Current CPU usage:${NC}"
+        top -bn1 | head -n 12
+        echo
+        
+        echo -e "${CYAN}📊 Top 10 CPU-consuming processes:${NC}"
+        ps aux --sort=-%cpu | head -n 11
+        echo
+        
+        echo -e "${YELLOW}Step 2: Common causes and solutions:${NC}"
+        echo
+        echo -e "${CYAN}• High system load:${NC}"
+        uptime
+        echo
+        echo -e "${CYAN}• Check for runaway processes in the list above${NC}"
+        echo -e "${CYAN}• Use 'htop' for interactive monitoring (install with: robohelp -pi htop)${NC}"
+        echo -e "${CYAN}• Kill a process: kill -9 <PID>${NC}"
+        echo -e "${CYAN}• Renice a process: renice -n 10 -p <PID>${NC}"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            # Get top 15 CPU processes and format for dialog menu
+        mapfile -t process_list < <(ps aux --sort=-%cpu | awk 'NR>1 && NR<=16 {printf "%s|%s|%s|%s\n", $2, $3, $11, $0}')
+        
+        if [ ${#process_list[@]} -gt 0 ]; then
+            # Build dialog menu items
+            menu_items=()
+            for proc in "${process_list[@]}"; do
+                IFS='|' read -r pid cpu cmd full_line <<< "$proc"
+                # Truncate command if too long
+                if [ ${#cmd} -gt 35 ]; then
+                    cmd="${cmd:0:32}..."
+                fi
+                menu_items+=("$pid" "CPU:${cpu}% - $cmd")
+            done
+            
+            selected_pid=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Kill Process - Select from Top CPU Consumers" \
+                --menu "Choose a process to kill (or Cancel to skip):" 20 75 12 \
+                "${menu_items[@]}" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            
+            if [ $dialog_exit -eq 0 ] && [ -n "$selected_pid" ]; then
+                # Get process details for confirmation
+                proc_details=$(ps -p "$selected_pid" -o pid,pcpu,pmem,comm --no-headers 2>/dev/null)
+                
+                if [ -n "$proc_details" ]; then
+                    echo
+                    echo -e "${CYAN}📋 Process details:${NC}"
+                    echo "  $proc_details"
+                    echo
+                    
+                    dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Confirm Kill Process" \
+                        --yesno "Are you sure you want to kill process $selected_pid?\n\n$proc_details" 10 60
+                    dialog_exit=$?                    
+                    if [ $dialog_exit -eq 0 ]; then
+                        clear -x
+                        echo
+                        echo -e "${YELLOW}Attempting to kill process $selected_pid...${NC}"
+                        if sudo kill -9 "$selected_pid" 2>/dev/null; then
+                            echo -e "${GREEN}✅ Process $selected_pid killed successfully.${NC}"
+                        else
+                            echo -e "${RED}❌ Failed to kill process $selected_pid. It may have already terminated.${NC}"
+                        fi
+                        echo
+                    else
+                        clear -x
+                        echo
+                        echo -e "${YELLOW}⚠️  Kill operation cancelled.${NC}"
+                        echo
+                    fi
+                else
+                    echo
+                    echo -e "${RED}❌ Process $selected_pid no longer exists.${NC}"
+                    echo
+                fi
+            fi
+        else
+            echo -e "${RED}❌ Could not retrieve process list.${NC}"
+            echo
+        fi
+    else
+        # Fallback for non-dialog systems
+        echo
+        echo -e "${CYAN}Top CPU processes:${NC}"
+        ps aux --sort=-%cpu | head -n 11 | awk 'NR>1 {printf "[%s] CPU:%s%% - %s\n", $2, $3, $11}'
+        echo
+        echo -e "${CYAN}Enter PID to kill (or press Enter to skip):${NC}"
+        read -r pid
+        if [ -n "$pid" ]; then
+            echo
+            echo -e "${YELLOW}Attempting to kill process $pid...${NC}"
+            if sudo kill -9 "$pid" 2>/dev/null; then
+                echo -e "${GREEN}✅ Process $pid killed successfully.${NC}"
+            else
+                echo -e "${RED}❌ Failed to kill process $pid. Check if PID is valid.${NC}"
+            fi
+            echo
+        fi
+    fi
+    
+    echo -e "${GREEN}✅ CPU diagnostics complete.${NC}"
     echo
-    echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
-    echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
-    read -r live_fire_command
-    echo
+}
 
-    echo -e "${CYAN} Which hosts should be targeted?${NC}"
-    echo -e "${CYAN}<───────────────────────────────>${NC}"
-    echo -e "${YELLOW}> [1] All${NC}"
-    echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
-    echo
+    troubleshoot_disk() {
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🔧 Disk Space Troubleshooting${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}Step 1: Analyzing disk usage...${NC}"
+        echo
+        
+        echo -e "${CYAN}📊 Filesystem usage:${NC}"
+        df -h
+        echo
+        
+        echo -e "${CYAN}📊 Largest directories in /home:${NC}"
+        du -h --max-depth=1 /home 2>/dev/null | sort -hr | head -n 10
+        echo
+        
+        echo -e "${CYAN}📊 Largest directories in /var:${NC}"
+        sudo du -h --max-depth=1 /var 2>/dev/null | sort -hr | head -n 10
+        echo
+        
+        echo -e "${YELLOW}Step 2: Cleanup options:${NC}"
+        echo
+        echo -e "${CYAN}• Clean package cache:${NC}"
+        echo -e "  robohelp -acl"
+        echo -e "${CYAN}• Remove old kernels (Ubuntu/Debian):${NC}"
+        echo -e "  robohelp -arm"
+        echo -e "${CYAN}• Clean journal logs:${NC}"
+        echo -e "  robohelp -dm -> Clean Journal logs"
+        echo -e "${CYAN}• Find large files:${NC}"
+        echo -e "  robohelp -dm -> Find Largest Files"
+        echo
+        
+        if command -v dialog &>/dev/null; then
+            echo -e "${YELLOW}Press any key to continue...${NC}"
+            read -n 1 -s -r
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Disk Cleanup" \
+                --yesno "Would you like to clean package cache and remove unnecessary packages now?" 8 60
+            dialog_exit=$?
+            if [ $dialog_exit -eq 0 ]; then
+                clear -x
+                echo
+                echo -e "${CYAN}🧹 Cleaning package cache...${NC}"
+                package_autocls
+                echo
+                echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+                package_autorm
+                echo
+                echo -e "${GREEN}✅ Cleanup complete. Check disk usage with: df -h${NC}"
+                echo
+            else
+                clear -x
+            fi
+        else
+            echo -e "${CYAN}Clean package cache and remove unnecessary packages now? [y/N]${NC}"
+            read -r do_cleanup
+            if [[ "$do_cleanup" =~ ^[Yy]$ ]]; then
+                echo
+                echo -e "${CYAN}🧹 Cleaning package cache...${NC}"
+                package_autocls
+                echo
+                echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
+                package_autorm
+                echo
+                echo -e "${GREEN}✅ Cleanup complete. Check disk usage with: df -h${NC}"
+                echo
+            fi
+        fi
+        
+        echo -e "${GREEN}✅ Disk space diagnostics complete.${NC}"
+        echo
+    }
 
-    read -r live_fire_target
-
-    case "${live_fire_target}" in
-	1)
-	    ansible -i hosts.yml all -m shell -a "${live_fire_command}"
-	    ;;
-	2)
-	    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
-	    echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
-	    echo
-	    read -r custom_target
-
-	    ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
-	    ;;
-	*)
-	    echo -e "${RED}Invalid option selected. Aborting.${NC}"
-	    ;;
+    case "${ts_option}" in
+        1)
+            troubleshoot_boot
+            ;;
+        2)
+            troubleshoot_network
+            ;;
+        3)
+            troubleshoot_cpu
+            ;;
+        4)
+            troubleshoot_disk
+            ;;
+        5)
+            troubleshoot_service
+            ;;
+        6)
+            troubleshoot_ssh
+            ;;
+        7)
+            return 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected.${NC}"
+            ;;
     esac
 }
 
@@ -732,20 +3051,286 @@ live_fire() {
 ansible_deploy() {
     check_installed "ansible" ||  { echo; echo -e "${RED}❌ Ansible is not installed. Install with robohelp -pi ansible-core. Or via pip install ansible${NC}"; echo; exit 1; }
 
-    echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo
-    echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
-    echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"
-    echo -e "${YELLOW}  [3] Live-Fire Command${NC}"
-    echo -e "${YELLOW}  [4] View Inventory${NC}"
-    echo -e "${YELLOW}  [5] View Last Run Log${NC}"
-    echo -e "${YELLOW}  [6] Exit${NC}"
-    echo
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
+        echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"
+        echo -e "${YELLOW}  [3] Live-Fire Command${NC}"
+        echo -e "${YELLOW}  [4] View Inventory${NC}"
+        echo -e "${YELLOW}  [5] View Last Run Log${NC}"
+        echo -e "${YELLOW}  [6] Exit${NC}"
+        echo
+        read -r option
+    else
+        option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🤖 Ansible Fast Management (AFM)" \
+            --menu "Choose an option:" 13 60 5 \
+            "1" "Run Playbook (with Flags)" \
+            "2" "Test Connection (Ping Hosts)" \
+            "3" "Live-Fire Command" \
+            "4" "View Inventory" \
+            "5" "View Last Run Log" \
+            2>&1 >/dev/tty)
+        dialog_exit=$?
+        clear -x
+        [ $dialog_exit -ne 0 ] && return 0
+    fi
 
-    read -r option
+    find_playbook() {
+        mapfile -t playbooks < <(find . -type f -name "*.yml")
+
+        if [ ${#playbooks[@]} -eq 0 ]; then
+            echo -e "${RED}🛑 No playbook files (.yml) found in current directory.${NC}"
+            return 1
+        fi
+
+        loop=-1
+        for playbook in "${playbooks[@]}"; do
+            ((loop++))
+            dir_path=$(dirname "$playbook")
+            file_name=$(basename "$playbook")
+            printf '[%d] %s\n%s\n\n' "$loop" "$dir_path" "$file_name"
+        done
+        return 0
+    }
+
+    view_inventory() {
+        local inv
+        if [ -f hosts.yml ]; then
+            inv="hosts.yml"
+        elif ls hosts.* >/dev/null 2>&1; then
+            # fallback to any hosts.* file, pick the first
+            inv=$(ls hosts.* 2>/dev/null | head -n1)
+        else
+            echo -e "${RED}🛑 No inventory file found (expected hosts.yml).${NC}"
+            return 1
+        fi
+        echo
+        echo -e "${YELLOW}📄 Showing Ansible inventory: $inv${NC}"
+        echo
+        if [ -n "$PAGER" ]; then
+            "$PAGER" "$inv" 2>/dev/null || cat "$inv"
+        else
+            cat "$inv"
+        fi
+    }
+
+    log_exists() {
+        log_path="$HOME/.log/afmrun.log"
+        if [ -f "$log_path" ]; then
+            return 0
+        else
+            mkdir -p "$(dirname "$log_path")"
+            touch "$log_path"
+        fi
+    }
+
+    log_write() {
+        case "$1" in
+        "scs")
+            echo "$timestamp - Successfully ran playbook: ${playbooks[$selected_index]}" >> "$log_path"
+            ;;
+        "ping")
+            echo "$timestamp - Ping ran successfully" >> "$log_path"
+            ;;
+        "fail")
+            echo "$timestamp - Running playbook: ${playbooks[$selected_index]} failed" >> "$log_path"
+            ;;
+        "pingfail")
+            echo "$timestamp - Running Ping with inventory file failed" >> "$log_path"
+            ;;
+        esac
+    }
+
+    log_actions() {
+        log_exists && log_write "$1"
+    }
+
+
+    run_ping() {
+        if ansible all -i hosts.* -m ping; then
+            log_actions "ping"
+        else
+            log_actions "pingfail"
+        fi
+    }
+
+    run_playbook() {
+        if command -v dialog &>/dev/null; then
+            # Build dialog menu items
+            menu_items=()
+            loop=0
+            for playbook in "${playbooks[@]}"; do
+                file_name=$(basename "$playbook")
+                dir_path=$(dirname "$playbook")
+                menu_items+=("$loop" "$dir_path/$file_name")
+                ((loop++))
+            done
+            
+            selected_index=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "📋 Select Playbook" \
+                --menu "Choose a playbook to run:" 20 70 12 \
+                "${menu_items[@]}" \
+                2>&1 >/dev/tty)
+            
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+
+            # Ask for additional flags
+            additional_flags=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Additional Flags" \
+                --inputbox "Enter additional flags (e.g. remove) or leave empty:" 10 60 \
+                2>&1 >/dev/tty)
+            
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+                
+        else
+            echo -e "${CYAN} Which playbook would you like to run? [e.g. 1 remove]${NC}"
+            echo -e "${CYAN}<─────────────────────────────────────────────────────>${NC}"
+            read -r selected_index additional_flags
+            echo
+        fi
+
+        if ! [[ "$selected_index" =~ ^[0-9]+$ ]] || [ "$selected_index" -ge "${#playbooks[@]}" ]; then
+            echo -e "${RED} Invalid playbook selection.${NC}"
+            return 1
+        fi
+
+        if command -v dialog &>/dev/null; then
+            dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Ansible Vault" \
+                --yesno "Do you use Ansible Vault?" 7 40
+            vault_choice=$?
+            clear -x
+            
+            if [ $vault_choice -eq 0 ]; then
+                vault_flag="--ask-vault-pass"
+            else
+                vault_flag="--ask-become-pass"
+            fi
+        else
+            echo -e "${CYAN} Do you use Ansible Vault? [Yes | No]${NC}"
+            echo -e "${CYAN}<────────────────────────────────────>${NC}"
+            read -r ansible_vault_val
+            echo
+
+            case "${ansible_vault_val,,}" in
+                yes)
+                    vault_flag="--ask-vault-pass"
+                    ;;
+                no)
+                    vault_flag="--ask-become-pass"
+                    ;;
+                *)
+                    echo -e "${RED}Invalid input - Please answer Yes or No${NC}"
+                    return 1
+                    ;;
+            esac
+        fi
+
+        playbook="$(basename "${playbooks[$selected_index]}")"
+        extra_vars=()
+
+        # Only set extra_vars if flags are non-empty
+        if [ -n "$additional_flags" ];  then
+            extra_vars=(--extra-vars "action=$additional_flags")
+        fi
+
+        echo -e "${CYAN}🚀 Running playbook: $playbook${NC}"
+        echo -e "${CYAN}🚩 Flags: ${vault_flag} ${extra_vars[*]}${NC}"
+        echo
+        echo -e "${YELLOW}🛑 5 seconds to stop process...${NC}"
+        echo
+
+        sleep 5
+
+        if ansible-playbook -i hosts.yml "$playbook" "${extra_vars[@]}" $vault_flag -v; then
+            log_actions "scs"
+        else
+            log_actions "fail"
+        fi
+    }
+
+    playbook_actions() {
+        if ! find_playbook; then
+            return 1
+        fi
+
+        if [ "$1" = "run" ]; then
+            run_playbook
+        fi
+    }
+
+    live_fire() {
+        if command -v dialog &>/dev/null; then
+            live_fire_command=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Live-Fire Command" \
+                --inputbox "Which command would you like to Live-Fire?" 10 60 \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x    
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo
+            echo -e "${CYAN} Which Command would you like to Live-Fire?${NC}"
+            echo -e "${CYAN}<──────────────────────────────────────────>${NC}"
+            read -r live_fire_command
+            echo
+        fi
+
+        if command -v dialog &>/dev/null; then
+            live_fire_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                --title "Target Hosts" \
+                --menu "Which hosts should be targeted?" 11 60 2 \
+                "1" "All" \
+                "2" "Write Own (Single host or host groups)" \
+                2>&1 >/dev/tty)
+            dialog_exit=$?
+            clear -x
+            [ $dialog_exit -ne 0 ] && return 0
+        else
+            echo -e "${CYAN} Which hosts should be targeted?${NC}"
+            echo -e "${CYAN}<───────────────────────────────────>${NC}"
+            echo -e "${YELLOW}> [1] All${NC}"
+            echo -e "${YELLOW}> [2] Write Own (Single host or host groups)${NC}"
+            echo
+            read -r live_fire_target
+        fi
+
+        case "${live_fire_target}" in
+            1)
+                ansible -i hosts.yml all -m shell -a "${live_fire_command}"
+                ;;
+            2)
+                if command -v dialog &>/dev/null; then
+                    custom_target=$(dialog --backtitle "RoboHelp v$VERSION" \
+                        --title "Custom Target" \
+                        --inputbox "Enter host or group (e.g. webservers, nagios):" 10 60 \
+                        2>&1 >/dev/tty)
+                    dialog_exit=$?
+                    clear -x    
+                    [ $dialog_exit -ne 0 ] && return 0
+                else
+                    echo -e "${CYAN} Enter host or group (e.g. webservers, nagios):${NC}"
+                    echo -e "${CYAN}<──────────────────────────────────────────────>${NC}"
+                    echo
+                    read -r custom_target
+                fi
+            ansible -i hosts.yml "${custom_target}" -m shell -a "${live_fire_command}"
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Aborting.${NC}"
+            ;;
+        esac
+    }
 
     if printf -- '%d' "${option}" > /dev/null 2>&1; then
 	    case "${option}" in
@@ -785,6 +3370,78 @@ ansible_deploy() {
     fi
 }
 
+show_main_menu() {
+    if ! check_dialog; then
+        # Fallback to old menu
+        echo
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}🏠 RoboHelp Main Menu${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo
+        echo -e "${YELLOW}  [1] 📦 Package Management${NC}"
+        echo -e "${YELLOW}  [2] ⚙️ Service Management${NC}"
+        echo -e "${YELLOW}  [3] 💾 Disk Management${NC}"
+        echo -e "${YELLOW}  [4] 🔧 Troubleshooting Wizard${NC}"
+        echo -e "${YELLOW}  [5] 🏥 Health Check${NC}"
+        echo -e "${YELLOW}  [6] 🌐 Network Diagnostics${NC}"
+        echo -e "${YELLOW}  [7] 🔐 SSH Configuration${NC}"
+        echo -e "${YELLOW}  [8] 🤖 Ansible Management (AFM)${NC}"
+        echo -e "${YELLOW}  [9] Exit${NC}"
+        echo
+        read -r main_option
+    else
+        main_option=$(dialog --backtitle "RoboHelp v$VERSION" \
+            --title "🏠 RoboHelp Main Menu" \
+            --menu "Choose a category:" 18 60 8 \
+            "1" "📦 Package Management" \
+            "2" "⚙️ Service Management" \
+            "3" "💾 Disk Management" \
+            "4" "🔧 Troubleshooting Wizard" \
+            "5" "🏥 Health Check" \
+            "6" "🌐 Network Diagnostics" \
+            "7" "🔐 SSH Configuration" \
+            "8" "🤖 Ansible Management (AFM)" \
+            2>&1 >/dev/tty)
+        clear -x
+        [ $? -ne 0 ] && exit 0
+    fi
+
+    case "${main_option}" in
+        1)
+            require_root
+            package_management
+            ;;
+        2)
+            service_management
+            ;;
+        3)
+            disk_management
+            ;;
+        4)
+            troubleshooting_wizard
+            ;;
+        5)
+            health_check
+            ;;
+        6)
+            network_diagnostics
+            ;;
+        7)
+            ssh_config
+            ;;
+        8)
+            ansible_deploy
+            ;;
+        9)
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option selected. Exiting.${NC}"
+            exit 1
+            ;;
+    esac
+}
+
 main() {
     show_banner
     det_release
@@ -795,6 +3452,13 @@ main() {
 
 	# Parse command-line flags
 	case "$1" in
+        "")
+            show_main_menu
+            ;;
+	    -pm|--package-management)
+        require_root
+		package_management
+		;;
 	    -pud|--p-update)
 		    require_root
 		    package_update
@@ -857,31 +3521,51 @@ main() {
                 esac
             done
             ;;
+	    -hc|--health-check)
+		    health_check
+		    ;;
+        -nd|--network-diag)
+            network_diagnostics
+            ;;
+        -dm|--disk-management)
+            disk_management
+            ;;
+        -tw|--troubleshoot)
+            troubleshooting_wizard
+            ;;
 	    -A|--ansible)
 		    ansible_deploy
 		    ;;
 	    -h|--help)
 		    echo
 		    echo "Usage: robohelp [option]"
-		    echo "	-pud, --p-update	[1] Update Package Repositories"
-		    echo "	-pur, --p-upgrade 	[1] Upgrade installed packages"
-		    echo "	-arm, --p-autoremove  	[1] Remove unnecessary packages"
-		    echo "	-acl, --p-autoclean	[1] Clean up local repository"
-		    echo "	-fu,  --full-upgrade	Run full system upgrade with options from [1]"
-		    echo
-		    echo "	-dur, --dist-upgrade	Run distribution update for system"
-		    echo "	-ssh, --ssh-settings	Setup SSH Connections, distribute keys and config"
-	        echo
-		    echo "	-pi,  --p-install 	<name>	Install package from repository"
-		    echo "	-ps,  --p-search 	<name>	Search package in repository"
-		    echo " 	-prm, --p-remove	<name>	Remove package from system"
-		    echo "	-pp,  --p-purge		<name>	Remove package with all its dependencies"
-		    echo
-		    echo "	-A,   --ansible		Ansible Fast Management"
-		    echo "	-h,   --help		Show this help message"
-		    echo
-		    echo "Note: robohelp automatically checks for updates on GitHub at startup."
-		    echo "Current version: $VERSION"
+		echo
+		echo -e "${CYAN}🎯 Main Menus:${NC}"
+		echo "	robohelp			Launch RoboHelp Main Menu"
+		echo "	-pm,  --package-management	Interactive package management menu"
+		echo "	-A,   --ansible			Ansible Fast Management (AFM)"
+		echo
+		echo -e "${CYAN}📦 Package Management (Quick Commands):${NC}"
+		echo "	-pud, --p-update		Update Package Repositories [1]"
+		echo "	-pur, --p-upgrade		Upgrade installed packages [1]"
+		echo "	-arm, --p-autoremove		Remove unnecessary packages [1]"
+		echo "	-acl, --p-autoclean		Clean up local repository [1]"
+		echo "	-fu,  --full-upgrade		Run full system upgrade with options [1]"
+		echo "	-dur, --dist-upgrade		Run distribution upgrade"
+		echo "	-pi,  --p-install <name>	Install package(s)"
+		echo "	-ps,  --p-search <name>		Search package(s)"
+		echo "	-prm, --p-remove <name>		Remove package(s)"
+		echo "	-pp,  --p-purge <name>		Purge package(s) with dependencies"
+		echo
+		echo -e "${CYAN}⚙️  System Tools (Quick Commands):${NC}"
+		echo "	-ssh, --ssh-settings		SSH configuration menu"
+		echo "	-hc,  --health-check		Run system health check"
+		echo "	-nd,  --network-diag		Network diagnostics menu"
+		echo "	-dm,  --disk-management		Disk management menu"
+		echo "	-tw,  --troubleshoot		Troubleshooting wizard"
+		echo -e "${CYAN}ℹ️  Information:${NC}"
+		echo "	-h,   --help			Show this help message"
+		echo
 		    ;;
 	    *)
 		    echo
