@@ -299,43 +299,6 @@ det_release() {
     esac
 }
 
-# macOS service management wrapper functions
-macos_service_list() {
-    launchctl list
-}
-
-macos_service_start() {
-    local service="$1"
-    launchctl start "$service" 2>/dev/null || launchctl kickstart -k "system/$service" 2>/dev/null
-}
-
-macos_service_stop() {
-    local service="$1"
-    launchctl stop "$service" 2>/dev/null || launchctl kill SIGTERM "system/$service" 2>/dev/null
-}
-
-macos_service_restart() {
-    local service="$1"
-    macos_service_stop "$service"
-    sleep 1
-    macos_service_start "$service"
-}
-
-macos_service_status() {
-    local service="$1"
-    launchctl print "system/$service" 2>/dev/null || launchctl list | grep "$service"
-}
-
-macos_service_enable() {
-    local service="$1"
-    launchctl enable "system/$service" 2>/dev/null
-}
-
-macos_service_disable() {
-    local service="$1"
-    launchctl disable "system/$service" 2>/dev/null
-}
-
 # Check if user has sudo rights
 require_root() {
     if sudo -l -U "$USER" &>/dev/null; then
@@ -1017,6 +980,43 @@ service_management() {
             echo -e "${RED}Invalid option selected.${NC}"
             ;;
     esac
+}
+
+# macOS service management wrapper functions
+macos_service_list() {
+    launchctl list
+}
+
+macos_service_start() {
+    local service="$1"
+    launchctl start "$service" 2>/dev/null || launchctl kickstart -k "system/$service" 2>/dev/null
+}
+
+macos_service_stop() {
+    local service="$1"
+    launchctl stop "$service" 2>/dev/null || launchctl kill SIGTERM "system/$service" 2>/dev/null
+}
+
+macos_service_restart() {
+    local service="$1"
+    macos_service_stop "$service"
+    sleep 1
+    macos_service_start "$service"
+}
+
+macos_service_status() {
+    local service="$1"
+    launchctl print "system/$service" 2>/dev/null || launchctl list | grep "$service"
+}
+
+macos_service_enable() {
+    local service="$1"
+    launchctl enable "system/$service" 2>/dev/null
+}
+
+macos_service_disable() {
+    local service="$1"
+    launchctl disable "system/$service" 2>/dev/null
 }
 
 ssh_config() {
