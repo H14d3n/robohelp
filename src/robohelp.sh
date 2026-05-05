@@ -152,7 +152,9 @@ check_and_update() {
 
 # Function to determine distro and set commands
 det_release() {
-    if command -v lsb_release &>/dev/null; then
+    if [ "$(uname -s)" == "Darwin" ]; then
+        distro="macos"
+    elif command -v lsb_release &>/dev/null; then
 	    distro=$(lsb_release -si)
     elif [ -f /etc/os-release ]; then
 	    distro=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"' )
@@ -161,7 +163,7 @@ det_release() {
     fi
 
     # Convert to lowercase
-    distro="${distro,,}"
+    shopt -s nocasematch 
 
     case "$distro" in
 	ubuntu|debian|kali)
@@ -269,11 +271,69 @@ det_release() {
 	    service_enable_cmd="sudo systemctl enable"
 	    service_disable_cmd="sudo systemctl disable"
 	    ;;
+    macos)
+	    update_cmd="brew update"
+	    upgrade_cmd="brew upgrade"
+	    dist_upgrade_cmd="brew upgrade"
+	    autoremove_cmd="brew cleanup"
+	    autoclean_cmd="brew cleanup"
+	    install_cmd="brew install"
+	    remove_cmd="brew uninstall"
+	    purge_cmd="brew uninstall"
+	    search_cmd="brew search"
+	    check_broken_cmd="brew doctor 2>&1 | grep -c 'warning' 2>/dev/null | xargs"
+	    check_security_cmd="brew outdated 2>/dev/null | wc -l"
+	    service_manager="launchctl"
+	    service_list_cmd="macos_service_list"
+	    service_start_cmd="macos_service_start"
+	    service_stop_cmd="macos_service_stop"
+	    service_restart_cmd="macos_service_restart"
+	    service_status_cmd="macos_service_status"
+	    service_enable_cmd="macos_service_enable"
+	    service_disable_cmd="macos_service_disable"
+	    ;;
 	*)
 	    echo -e "${RED} ❌ Unsupported distro: $distro. Please edit the script manually. ${NC}"
 	    exit 1
 	    ;;
     esac
+}
+
+# macOS service management wrapper functions
+macos_service_list() {
+    launchctl list
+}
+
+macos_service_start() {
+    local service="$1"
+    launchctl start "$service" 2>/dev/null || launchctl kickstart -k "system/$service" 2>/dev/null
+}
+
+macos_service_stop() {
+    local service="$1"
+    launchctl stop "$service" 2>/dev/null || launchctl kill SIGTERM "system/$service" 2>/dev/null
+}
+
+macos_service_restart() {
+    local service="$1"
+    macos_service_stop "$service"
+    sleep 1
+    macos_service_start "$service"
+}
+
+macos_service_status() {
+    local service="$1"
+    launchctl print "system/$service" 2>/dev/null || launchctl list | grep "$service"
+}
+
+macos_service_enable() {
+    local service="$1"
+    launchctl enable "system/$service" 2>/dev/null
+}
+
+macos_service_disable() {
+    local service="$1"
+    launchctl disable "system/$service" 2>/dev/null
 }
 
 # Check if user has sudo rights
