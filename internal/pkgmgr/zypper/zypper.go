@@ -8,21 +8,21 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
-package pkgmgr
+package zypper
 
-func initZypper() {
-	INSTALL_CMD = "sudo zypper install -y"
-	UPDATE_CMD = "sudo zypper refresh"
-	UPGRADE_CMD = "sudo zypper update -y"
-	DIST_UPGRADE_CMD = "sudo zypper dist-upgrade -y"
-	AUTOREMOVE_CMD = "sudo zypper clean -a"
-	AUTOCLEAN_CMD = "sudo zypper clean"
-	REMOVE_CMD = "sudo zypper remove -y"
-	PURGE_CMD = "sudo zypper remove -y"
-	SEARCH_CMD = "zypper search"
-	CHECK_BROKEN_CMD = "unknown"
-	CHECK_SECURITY_CMD = "zypper list-updates 2>/dev/null | tail -n +5 | wc -l"
-}
+const (
+	InstallCmd       = "sudo zypper install -y"
+	UpdateCmd        = "sudo zypper refresh"
+	UpgradeCmd       = "sudo zypper update -y"
+	DistUpgradeCmd   = "sudo zypper dist-upgrade -y"
+	AutoremoveCmd    = "sudo zypper clean -a"
+	AutocleanCmd     = "sudo zypper clean"
+	RemoveCmd        = "sudo zypper remove -y"
+	PurgeCmd         = "sudo zypper remove -y"
+	SearchCmd        = "zypper search"
+	CheckBrokenCmd   = "unknown"
+	CheckSecurityCmd = "zypper list-updates 2>/dev/null | tail -n +5 | wc -l"
+)

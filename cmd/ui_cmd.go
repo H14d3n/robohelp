@@ -8,11 +8,29 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
-package context
+package cmd
 
-import "time"
+import (
+	"fmt"
+	"os"
 
-var TIMESTAMP string = time.Now().Format("2006-01-02 15:04:05")
+	"github.com/h14d3n/robohelp/internal/app/ui"
+)
+
+func runUI() {
+	runMenuAndDispatch(ui.RunMainMenu)
+}
+
+func runMenuAndDispatch(run func() (ui.Result, error)) {
+	prepareUIScreen()
+	result, err := run()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	runAppAction(result.Action, result.Value)
+}

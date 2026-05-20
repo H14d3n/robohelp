@@ -8,21 +8,21 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
-package pkgmgr
+package apt
 
-func init_apt() {
-	INSTALL_CMD = "sudo apt install -y"
-	UPDATE_CMD = "sudo apt update"
-	UPGRADE_CMD = "sudo apt upgrade -y"
-	DIST_UPGRADE_CMD = "sudo apt dist-upgrade -y"
-	AUTOREMOVE_CMD = "sudo apt autoremove -y"
-	AUTOCLEAN_CMD = "sudo apt autoclean -y"
-	REMOVE_CMD = "sudo apt remove -y"
-	PURGE_CMD = "sudo apt purge -y"
-	SEARCH_CMD = "apt search"
-	CHECK_BROKEN_CMD = "dpkg -l 2>/dev/null | grep -c '^iU\\|^iF' 2>/dev/null | xargs"
-	CHECK_SECURITY_CMD = "apt list --upgradable 2>/dev/null | grep -i security | wc -l"
-}
+const (
+	InstallCmd       = "sudo apt install -y"
+	UpdateCmd        = "sudo apt update"
+	UpgradeCmd       = "sudo apt upgrade -y"
+	DistUpgradeCmd   = "sudo apt dist-upgrade -y"
+	AutoremoveCmd    = "sudo apt autoremove -y"
+	AutocleanCmd     = "sudo apt autoclean -y"
+	RemoveCmd        = "sudo apt remove -y"
+	PurgeCmd         = "sudo apt purge -y"
+	SearchCmd        = "apt search"
+	CheckBrokenCmd   = "dpkg -l 2>/dev/null | grep -c '^iU\\|^iF' 2>/dev/null | xargs"
+	CheckSecurityCmd = "apt list --upgradable 2>/dev/null | grep -i security | wc -l"
+)
