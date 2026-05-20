@@ -11,18 +11,24 @@
 // V 3.0.0
 // H14d3n
 
-package apt
+package cmd
 
-const (
-	InstallCmd       = "sudo apt install -y"
-	UpdateCmd        = "sudo apt update"
-	UpgradeCmd       = "sudo apt upgrade -y"
-	DistUpgradeCmd   = "sudo apt dist-upgrade -y"
-	AutoremoveCmd    = "sudo apt autoremove -y"
-	AutocleanCmd     = "sudo apt autoclean -y"
-	RemoveCmd        = "sudo apt remove -y"
-	PurgeCmd         = "sudo apt purge -y"
-	SearchCmd        = "apt search"
-	CheckBrokenCmd   = "dpkg -l 2>/dev/null | grep -c '^iU\\|^iF' 2>/dev/null | xargs"
-	CheckSecurityCmd = "apt list --upgradable 2>/dev/null | grep -i security | wc -l"
+import (
+	"fmt"
+
+	"github.com/h14d3n/robohelp/internal/app/ui"
 )
+
+func ShowStartupBanner() {
+	const (
+		bannerColor = "\033[38;5;63m"
+		nc          = "\033[0m"
+	)
+
+	banner := ui.StartupBanner()
+	if banner == "" {
+		return
+	}
+
+	fmt.Printf("%s%s%s\n\n", bannerColor, banner, nc)
+}

@@ -123,15 +123,23 @@ Maybe adding more distributions later!
 
 ---
 
-## 🚀 Installation
+## 🚀 Build from Source
 
-### One-Time Installation
+### Build & Install (Recommended)
 
-RoboHelp only needs to be installed once. After installation, it will automatically check for and install updates from GitHub each time you run it.
+RoboHelp is a single binary. Build it once and install it system-wide.
 
-1. Clone or copy the `robohelp.sh` script to your system:
+**Prerequisite:** Go 1.25+
 
 ```bash
-sudo cp robohelp.sh /usr/local/bin/robohelp
-sudo chmod +x /usr/local/bin/robohelp
+git clone https://github.com/h14d3n/robohelp.git
+cd robohelp
+go build -o robohelp .
+sudo install -m 0755 robohelp /usr/local/bin/robohelp
+```
+
+### Run Without Installing
+
+```bash
+go run .
 ```

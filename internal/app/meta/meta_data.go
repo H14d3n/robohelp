@@ -8,15 +8,14 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
 package meta
 
-// Application Variables
-var (
-	VERSION string = "3.0.0"
-	GITHUB_REPO string = "h14d3n/robohelp"
-	GITHUB_RAW_URL string = "https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
-	INSTALL_PATH string = "/usr/local/bin/robohelp"
+const (
+	Version     = "3.0.0"
+	GitHubRepo  = "h14d3n/robohelp"
+	InstallPath = "/usr/local/bin/robohelp"
+	GitHubRawURL = "https://raw.githubusercontent.com/" + GitHubRepo + "/main/src/robohelp.sh"
 )

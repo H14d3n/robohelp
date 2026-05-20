@@ -8,39 +8,54 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
 package pkgmgr
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	apt "github.com/h14d3n/robohelp/internal/pkgmgr/apt"
+	brew "github.com/h14d3n/robohelp/internal/pkgmgr/brew"
+	dnf "github.com/h14d3n/robohelp/internal/pkgmgr/dnf"
+	pacman "github.com/h14d3n/robohelp/internal/pkgmgr/pacman"
+	yum "github.com/h14d3n/robohelp/internal/pkgmgr/yum"
+	zypper "github.com/h14d3n/robohelp/internal/pkgmgr/zypper"
 )
 
 // Install Commands
 var (
-	INSTALL_CMD string = ""
-	UPDATE_CMD string = ""
-	UPGRADE_CMD string = ""
-	DIST_UPGRADE_CMD string = ""
-	AUTOREMOVE_CMD string = ""
-	AUTOCLEAN_CMD string = ""
-	REMOVE_CMD string = ""
-	PURGE_CMD string = ""
-	SEARCH_CMD string = ""
-	CHECK_BROKEN_CMD string = ""
-	CHECK_SECURITY_CMD string = ""
+	InstallCmd       = ""
+	UpdateCmd        = ""
+	UpgradeCmd       = ""
+	DistUpgradeCmd   = ""
+	AutoremoveCmd    = ""
+	AutocleanCmd     = ""
+	RemoveCmd        = ""
+	PurgeCmd         = ""
+	SearchCmd        = ""
+	CheckBrokenCmd   = ""
+	CheckSecurityCmd = ""
+	DetectedDistro   = ""
 )
 
 func InitPkg() {
 	release := detectRelease()
+	DetectedDistro = release
 	if release == "" {
 		return
 	}
-	setDistroCommands(release)
+
+	// Commands are looked up once during startup and reused by cmd package actions.
+	if !setDistroCommands(release) {
+		fmt.Fprintln(os.Stderr, "Unsupported distro: "+release+". Please edit the config manually.")
+		os.Exit(1)
+	}
 }
 
 func detectRelease() string {
@@ -69,22 +84,137 @@ func detectRelease() string {
 	return ""
 }
 
-func setDistroCommands(release string) {
-	switch release {
-	case "ubuntu", "debian", "kali":
-		init_apt()
-	case "fedora":
-		init_dnf()
-	case "centos", "rhel":
-		init_yum()
-	case "arch", "manjaro", "manjarolinux":
-		init_pacman()
-	case "opensuse", "opensuse-tumbleweed", "sles":
-		init_zypper()
-	case "darwin", "macos", "macosx", "osx":
-		init_brew()
-	default:
-		println("Unsupported distro: " + release + ". Please edit the config manually.")
-		os.Exit(1)
+type commandSet struct {
+	install       string
+	update        string
+	upgrade       string
+	distUpgrade   string
+	autoremove    string
+	autoclean     string
+	remove        string
+	purge         string
+	search        string
+	checkBroken   string
+	checkSecurity string
+}
+
+var (
+	aptCommands = commandSet{
+		install:       apt.InstallCmd,
+		update:        apt.UpdateCmd,
+		upgrade:       apt.UpgradeCmd,
+		distUpgrade:   apt.DistUpgradeCmd,
+		autoremove:    apt.AutoremoveCmd,
+		autoclean:     apt.AutocleanCmd,
+		remove:        apt.RemoveCmd,
+		purge:         apt.PurgeCmd,
+		search:        apt.SearchCmd,
+		checkBroken:   apt.CheckBrokenCmd,
+		checkSecurity: apt.CheckSecurityCmd,
 	}
+	dnfCommands = commandSet{
+		install:       dnf.InstallCmd,
+		update:        dnf.UpdateCmd,
+		upgrade:       dnf.UpgradeCmd,
+		distUpgrade:   dnf.DistUpgradeCmd,
+		autoremove:    dnf.AutoremoveCmd,
+		autoclean:     dnf.AutocleanCmd,
+		remove:        dnf.RemoveCmd,
+		purge:         dnf.PurgeCmd,
+		search:        dnf.SearchCmd,
+		checkBroken:   dnf.CheckBrokenCmd,
+		checkSecurity: dnf.CheckSecurityCmd,
+	}
+	yumCommands = commandSet{
+		install:       yum.InstallCmd,
+		update:        yum.UpdateCmd,
+		upgrade:       yum.UpgradeCmd,
+		distUpgrade:   yum.DistUpgradeCmd,
+		autoremove:    yum.AutoremoveCmd,
+		autoclean:     yum.AutocleanCmd,
+		remove:        yum.RemoveCmd,
+		purge:         yum.PurgeCmd,
+		search:        yum.SearchCmd,
+		checkBroken:   yum.CheckBrokenCmd,
+		checkSecurity: yum.CheckSecurityCmd,
+	}
+	pacmanCommands = commandSet{
+		install:       pacman.InstallCmd,
+		update:        pacman.UpdateCmd,
+		upgrade:       pacman.UpgradeCmd,
+		distUpgrade:   pacman.DistUpgradeCmd,
+		autoremove:    pacman.AutoremoveCmd,
+		autoclean:     pacman.AutocleanCmd,
+		remove:        pacman.RemoveCmd,
+		purge:         pacman.PurgeCmd,
+		search:        pacman.SearchCmd,
+		checkBroken:   pacman.CheckBrokenCmd,
+		checkSecurity: pacman.CheckSecurityCmd,
+	}
+	zypperCommands = commandSet{
+		install:       zypper.InstallCmd,
+		update:        zypper.UpdateCmd,
+		upgrade:       zypper.UpgradeCmd,
+		distUpgrade:   zypper.DistUpgradeCmd,
+		autoremove:    zypper.AutoremoveCmd,
+		autoclean:     zypper.AutocleanCmd,
+		remove:        zypper.RemoveCmd,
+		purge:         zypper.PurgeCmd,
+		search:        zypper.SearchCmd,
+		checkBroken:   zypper.CheckBrokenCmd,
+		checkSecurity: zypper.CheckSecurityCmd,
+	}
+	brewCommands = commandSet{
+		install:       brew.InstallCmd,
+		update:        brew.UpdateCmd,
+		upgrade:       brew.UpgradeCmd,
+		distUpgrade:   brew.DistUpgradeCmd,
+		autoremove:    brew.AutoremoveCmd,
+		autoclean:     brew.AutocleanCmd,
+		remove:        brew.RemoveCmd,
+		purge:         brew.PurgeCmd,
+		search:        brew.SearchCmd,
+		checkBroken:   brew.CheckBrokenCmd,
+		checkSecurity: brew.CheckSecurityCmd,
+	}
+)
+
+var distroCommandMap = map[string]commandSet{
+	"ubuntu":              aptCommands,
+	"debian":              aptCommands,
+	"kali":                aptCommands,
+	"fedora":              dnfCommands,
+	"centos":              yumCommands,
+	"rhel":                yumCommands,
+	"arch":                pacmanCommands,
+	"manjaro":             pacmanCommands,
+	"manjarolinux":        pacmanCommands,
+	"opensuse":            zypperCommands,
+	"opensuse-tumbleweed": zypperCommands,
+	"sles":                zypperCommands,
+	"darwin":              brewCommands,
+	"macos":               brewCommands,
+	"macosx":              brewCommands,
+	"osx":                 brewCommands,
+}
+
+func setDistroCommands(release string) bool {
+	commands, ok := distroCommandMap[release]
+	if !ok {
+		return false
+	}
+
+	// Keep commands in package-level vars for the existing cmd package API.
+	InstallCmd = commands.install
+	UpdateCmd = commands.update
+	UpgradeCmd = commands.upgrade
+	DistUpgradeCmd = commands.distUpgrade
+	AutoremoveCmd = commands.autoremove
+	AutocleanCmd = commands.autoclean
+	RemoveCmd = commands.remove
+	PurgeCmd = commands.purge
+	SearchCmd = commands.search
+	CheckBrokenCmd = commands.checkBroken
+	CheckSecurityCmd = commands.checkSecurity
+	return true
 }

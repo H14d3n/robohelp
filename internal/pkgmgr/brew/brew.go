@@ -1,18 +1,28 @@
-// V 3.0.0 - 2026-05-06
+//┌──────────────────────────────────────────────────┐
+//│               _           _          _           │
+//│     _ __ ___ | |__   ___ | |__   ___| |____      │
+//│    | '__/ _ \| '_ \ / _ \| '_ \ / _ \ | '_ \     │
+//│    | | | (_) | |_) | (_) | | | |  __/ | |_) |    │
+//│    |_|  \___/|_.__/ \___/|_| |_|\___|_| .__/     │
+//│                                       |_|        │
+//│                                                  │
+//└──────────────────────────────────────────────────┘
+
+// V 3.0.0
 // H14d3n
 
-package pkgmgr
+package brew
 
-func init_brew() {
-	INSTALL_CMD = "brew install"
-	UPDATE_CMD = "brew update"
-	UPGRADE_CMD = "brew upgrade"
-	DIST_UPGRADE_CMD = "unknown"
-	AUTOREMOVE_CMD = "brew autoremove"
-	AUTOCLEAN_CMD = "brew cleanup"
-	REMOVE_CMD = "brew uninstall"
-	PURGE_CMD = "brew uninstall"
-	SEARCH_CMD = "brew search"
-	CHECK_BROKEN_CMD = "unknown"
-	CHECK_SECURITY_CMD = "unknown"
-}
+const (
+	InstallCmd       = "brew install"
+	UpdateCmd        = "brew update"
+	UpgradeCmd       = "brew upgrade"
+	DistUpgradeCmd   = "unknown"
+	AutoremoveCmd    = "brew autoremove"
+	AutocleanCmd     = "brew cleanup"
+	RemoveCmd        = "brew uninstall"
+	PurgeCmd         = "brew uninstall"
+	SearchCmd        = "brew search"
+	CheckBrokenCmd   = "unknown"
+	CheckSecurityCmd = "unknown"
+)

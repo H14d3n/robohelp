@@ -8,21 +8,21 @@
 //│                                                  │
 //└──────────────────────────────────────────────────┘
 
-// V 3.0.0 - 2026-05-06
+// V 3.0.0
 // H14d3n
 
-package pkgmgr
+package pacman
 
-func init_pacman() {
-	INSTALL_CMD = "sudo pacman -S --noconfirm"
-	UPDATE_CMD = "sudo pacman -Sy"
-	UPGRADE_CMD = "sudo pacman -Syu"
-	DIST_UPGRADE_CMD = "unknown"
-	AUTOREMOVE_CMD = "sudo pacman -Rns"
-	AUTOCLEAN_CMD = "sudo pacman -Sc"
-	REMOVE_CMD = "sudo pacman -R --noconfirm"
-	PURGE_CMD = "sudo pacman -Rns --noconfirm"
-	SEARCH_CMD = "pacman -Ss"
-	CHECK_BROKEN_CMD = "pacman -Qk 2>&1 | grep -c 'warning' 2>/dev/null | xargs"
-	CHECK_SECURITY_CMD = "checkupdates 2>/dev/null | wc -l"
-}
+const (
+	InstallCmd       = "sudo pacman -S --noconfirm"
+	UpdateCmd        = "sudo pacman -Sy"
+	UpgradeCmd       = "sudo pacman -Syu"
+	DistUpgradeCmd   = "unknown"
+	AutoremoveCmd    = "sudo pacman -Rns"
+	AutocleanCmd     = "sudo pacman -Sc"
+	RemoveCmd        = "sudo pacman -R --noconfirm"
+	PurgeCmd         = "sudo pacman -Rns --noconfirm"
+	SearchCmd        = "pacman -Ss"
+	CheckBrokenCmd   = "pacman -Qk 2>&1 | grep -c 'warning' 2>/dev/null | xargs"
+	CheckSecurityCmd = "checkupdates 2>/dev/null | wc -l"
+)
