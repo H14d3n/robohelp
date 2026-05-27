@@ -20,7 +20,6 @@
 - 🎨 Cool ASCII banner and BB-8 art on start
 - 🖥️ Detects your Linux distro
 - 📚 Easy to use with help command and interactive menus
-- 🔄 **Auto-Update:** Automatically checks and updates itself from GitHub
 - ⚡ **AFM (Ansible Fast Management):** Integrated menu for running Ansible playbooks, pinging hosts, viewing inventory, and checking logs
 - 🔁 **SSH Management:** Save SSH connections, distribute keys, and configure settings
 - ⚙️ **Service Management:** Start, stop, restart, enable/disable system services
@@ -28,10 +27,6 @@
 - 🌐 **Network Diagnostics:** DNS lookup, traceroute, ping, bandwidth monitoring, firewall status
 - 💾 **Disk Management:** Find large files, clean caches, manage mounts, find duplicates
 - 🔧 **Troubleshooting Wizard:** Guided diagnostics for boot, network, CPU, disk, and service issues
-
-
-
-
 
 ## 📖 Usage
 
