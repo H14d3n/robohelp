@@ -20,17 +20,17 @@ import (
 	"github.com/h14d3n/robohelp/internal/app/ui"
 )
 
-func runUI() {
-	runMenuAndDispatch(ui.RunMainMenu)
+func runUI() int {
+	return runMenuAndDispatch(ui.RunMainMenu)
 }
 
-func runMenuAndDispatch(run func() (ui.Result, error)) {
+func runMenuAndDispatch(run func() (ui.Result, error)) int {
 	prepareUIScreen()
 	result, err := run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
 
-	runAppAction(result.Action, result.Value)
+	return runAppAction(result.Action, result.Value)
 }

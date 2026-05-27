@@ -59,10 +59,20 @@ func InitCmd() {
 		Args:          cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, remaining []string) error {
 			if len(args) == 0 {
-				runUI()
+				code := runUI()
+				if code != 0 {
+					os.Exit(code)
+				}
 				return nil
 			}
-			return runSelectedAction(remaining, opts)
+			code, err := runSelectedAction(remaining, opts)
+			if err != nil {
+				return err
+			}
+			if code != 0 {
+				os.Exit(code)
+			}
+			return nil
 		},
 	}
 	rootCmd.SetOut(os.Stdout)
@@ -98,60 +108,64 @@ func InitCmd() {
 	}
 }
 
-func runSelectedAction(remaining []string, opts cliFlags) error {
+func runSelectedAction(remaining []string, opts cliFlags) (int, error) {
 	// Keep CLI usage predictable by allowing one primary action per command.
 	if opts.selectedCount() > 1 {
-		return cliInputError{message: "❌ Please use only one action flag at a time.", code: 1}
+		return 0, cliInputError{message: "❌ Please use only one action flag at a time.", code: 1}
 	}
 
 	if len(remaining) > 0 && !opts.hasValueAction() {
-		return cliInputError{message: "❌ Unknown or no flag provided. Try -h for help.", code: 1}
+		return 0, cliInputError{message: "❌ Unknown or no flag provided. Try -h for help.", code: 1}
 	}
 
 	switch {
 	case opts.packageManagement:
-		requireRootOrExit()
-		runPackageManagement()
+		if err := requireRoot(); err != nil {
+			printCLIError(err.Error())
+			return 1, nil
+		}
+		return runPackageManagement(), nil
 	case opts.devDistribute:
-		requireRootOrExit()
-		runDevDistribute()
+		if err := requireRoot(); err != nil {
+			printCLIError(err.Error())
+			return 1, nil
+		}
+		return runDevDistribute(), nil
 	case opts.installPackage != "":
-		runAppActionValues(ui.ActionPackageInstall, valuesFromFlagAndArgs(opts.installPackage, remaining))
+		return runAppActionValues(ui.ActionPackageInstall, valuesFromFlagAndArgs(opts.installPackage, remaining)), nil
 	case opts.searchPackage != "":
-		runAppActionValues(ui.ActionPackageSearch, valuesFromFlagAndArgs(opts.searchPackage, remaining))
+		return runAppActionValues(ui.ActionPackageSearch, valuesFromFlagAndArgs(opts.searchPackage, remaining)), nil
 	case opts.removePackage != "":
-		runAppActionValues(ui.ActionPackageRemove, valuesFromFlagAndArgs(opts.removePackage, remaining))
+		return runAppActionValues(ui.ActionPackageRemove, valuesFromFlagAndArgs(opts.removePackage, remaining)), nil
 	case opts.purgePackage != "":
-		runAppActionValues(ui.ActionPackagePurge, valuesFromFlagAndArgs(opts.purgePackage, remaining))
+		return runAppActionValues(ui.ActionPackagePurge, valuesFromFlagAndArgs(opts.purgePackage, remaining)), nil
 	case opts.ansible:
-		runAppAction(ui.ActionAnsible, "")
+		return runAppAction(ui.ActionAnsible, ""), nil
 	case opts.updatePackages:
-		runAppAction(ui.ActionPackageUpdate, "")
+		return runAppAction(ui.ActionPackageUpdate, ""), nil
 	case opts.upgradePackages:
-		runAppAction(ui.ActionPackageUpgrade, "")
+		return runAppAction(ui.ActionPackageUpgrade, ""), nil
 	case opts.autoremove:
-		runAppAction(ui.ActionPackageAutoremove, "")
+		return runAppAction(ui.ActionPackageAutoremove, ""), nil
 	case opts.autoclean:
-		runAppAction(ui.ActionPackageAutoclean, "")
+		return runAppAction(ui.ActionPackageAutoclean, ""), nil
 	case opts.fullUpgrade:
-		runAppAction(ui.ActionPackageFullUpgrade, "")
+		return runAppAction(ui.ActionPackageFullUpgrade, ""), nil
 	case opts.distUpgrade:
-		runAppAction(ui.ActionPackageDistUpgrade, "")
+		return runAppAction(ui.ActionPackageDistUpgrade, ""), nil
 	case opts.sshSettings:
-		runAppAction(ui.ActionSSH, "")
+		return runAppAction(ui.ActionSSH, ""), nil
 	case opts.healthCheck:
-		runAppAction(ui.ActionHealthCheck, "")
+		return runAppAction(ui.ActionHealthCheck, ""), nil
 	case opts.networkDiag:
-		runAppAction(ui.ActionNetworkDiagnostics, "")
+		return runAppAction(ui.ActionNetworkDiagnostics, ""), nil
 	case opts.diskManagement:
-		runAppAction(ui.ActionDiskManagement, "")
+		return runAppAction(ui.ActionDiskManagement, ""), nil
 	case opts.troubleshoot:
-		runAppAction(ui.ActionTroubleshoot, "")
+		return runAppAction(ui.ActionTroubleshoot, ""), nil
 	default:
-		runUI()
+		return runUI(), nil
 	}
-
-	return nil
 }
 
 func (opts cliFlags) selectedCount() int {

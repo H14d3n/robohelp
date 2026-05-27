@@ -40,6 +40,15 @@ func runShellCommand(command string) error {
 	return run.Run()
 }
 
+func runShellCommandLogged(command string) int {
+	err := runShellCommand(command)
+	if err != nil {
+		printWarning("Command failed: %v", err)
+		return exitCodeFromError(err)
+	}
+	return 0
+}
+
 func exitCodeFromError(err error) int {
 	if err == nil {
 		return 0

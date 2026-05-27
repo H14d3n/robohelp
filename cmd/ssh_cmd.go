@@ -22,32 +22,36 @@ import (
 	"github.com/h14d3n/robohelp/internal/app/ui"
 )
 
-func runSSHSettings() {
+func runSSHSettings() int {
 	if !checkIfInstalled("ssh") || !checkIfInstalled("ssh-keygen") {
 		printError("SSH or ssh-keygen is not installed. Install with robohelp -pi openssh-client")
-		os.Exit(1)
+		return 1
 	}
 
-	switch menuChoice("🔐 SSH Configuration", []string{
+	options := []string{
 		"Establish SSH connection",
 		"Generate SSH Key Pair",
 		"Copy SSH Key to Remote Host",
 		"Edit SSH Config File",
 		"Exit",
-	}) {
-	case "1":
-		sshConnect()
-	case "2":
-		generateSSHKey()
-	case "3":
-		copySSHKey()
-	case "4":
-		editSSHConfig()
-	case "5", "":
-		return
-	default:
-		printError("Invalid option selected")
 	}
+	choice, ok := menuSelect("🔐 SSH Configuration", options)
+	if !ok || choice == len(options)-1 {
+		return 0
+	}
+
+	switch choice {
+	case 0:
+		sshConnect()
+	case 1:
+		generateSSHKey()
+	case 2:
+		copySSHKey()
+	case 3:
+		editSSHConfig()
+	}
+
+	return 0
 }
 
 func sshConnect() {
@@ -97,7 +101,7 @@ func reuseSSHCommand() bool {
 	}
 
 	printInfo("Reusing command: ssh %s", selectedCommand)
-	_ = runShellCommand("ssh " + selectedCommand)
+	runShellCommandLogged("ssh " + selectedCommand)
 	return true
 }
 
@@ -107,7 +111,7 @@ func generateSSHKey() {
 	publicKey := privateKey + ".pub"
 	if _, err := os.Stat(privateKey); err == nil {
 		printWarning("SSH key already exists at ~/.ssh/id_rsa. Showing public key")
-		_ = runShellCommand("cat " + shellQuote(publicKey))
+		runShellCommandLogged("cat " + shellQuote(publicKey))
 		return
 	}
 
@@ -129,7 +133,7 @@ func copySSHKey() {
 		return
 	}
 
-	_ = runCommandLine("ssh-copy-id", "-p", port, fmt.Sprintf("%s@%s", user, host))
+	runCommandLineLogged("ssh-copy-id", "-p", port, fmt.Sprintf("%s@%s", user, host))
 }
 
 func promptSSHParts(prompt string) (string, string, string, bool) {
@@ -157,7 +161,7 @@ func editSSHConfig() {
 	}
 
 	printInfo("Opening SSH config file")
-	_ = runShellCommand(editor + " " + shellQuote(configPath))
+	runShellCommandLogged(editor + " " + shellQuote(configPath))
 }
 
 func appendUniqueLine(path, line string) {

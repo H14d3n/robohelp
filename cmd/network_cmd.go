@@ -16,7 +16,7 @@ package cmd
 import "fmt"
 
 func runNetworkDiagnostics() {
-	switch menuChoice("🌐 Network Diagnostics", []string{
+	options := []string{
 		"DNS Lookup",
 		"Traceroute/Ping utilities",
 		"Network interface info",
@@ -24,23 +24,25 @@ func runNetworkDiagnostics() {
 		"Firewall status (ufw/iptables/firewalld)",
 		"Active connections",
 		"Exit",
-	}) {
-	case "1":
-		dnsLookup()
-	case "2":
-		traceroutePing()
-	case "3":
-		networkInfo()
-	case "4":
-		bandwidthMonitor()
-	case "5":
-		firewallStatus()
-	case "6":
-		activeConnections()
-	case "7", "":
+	}
+	choice, ok := menuSelect("🌐 Network Diagnostics", options)
+	if !ok || choice == len(options)-1 {
 		return
-	default:
-		printError("Unsupported option")
+	}
+
+	switch choice {
+	case 0:
+		dnsLookup()
+	case 1:
+		traceroutePing()
+	case 2:
+		networkInfo()
+	case 3:
+		bandwidthMonitor()
+	case 4:
+		firewallStatus()
+	case 5:
+		activeConnections()
 	}
 }
 
@@ -55,13 +57,13 @@ func dnsLookup() {
 	switch tool := firstExistingCommand("dig", "nslookup", "host"); tool {
 	case "dig":
 		printInfo("Using dig")
-		_ = runShellCommand("dig " + shellQuote(domain))
+		runShellCommandLogged("dig " + shellQuote(domain))
 	case "nslookup":
 		printInfo("Using nslookup")
-		_ = runShellCommand("nslookup " + shellQuote(domain))
+		runShellCommandLogged("nslookup " + shellQuote(domain))
 	case "host":
 		printInfo("Using host")
-		_ = runShellCommand("host " + shellQuote(domain))
+		runShellCommandLogged("host " + shellQuote(domain))
 	default:
 		printError("No DNS tools available. Install dig, nslookup, or host")
 	}
@@ -70,33 +72,34 @@ func dnsLookup() {
 
 func traceroutePing() {
 	printSection("🛰️  Traceroute/Ping Utilities")
-	choice := menuChoice("Choose utility", []string{"Ping", "Traceroute"})
+	choice, ok := menuSelect("Choose utility", []string{"Ping", "Traceroute"})
+	if !ok {
+		return
+	}
 	target := promptLine("Enter target host/IP:")
 	if target == "" {
 		return
 	}
 
 	switch choice {
-	case "1":
+	case 0:
 		if !checkIfInstalled("ping") {
 			printError("ping command not found")
 			return
 		}
 		printInfo("Pinging %s", target)
-		_ = runCommandLine("ping", "-c", "4", target)
-	case "2":
+		runCommandLineLogged("ping", "-c", "4", target)
+	case 1:
 		switch tool := firstExistingCommand("traceroute", "tracepath"); tool {
 		case "traceroute":
 			printInfo("Tracing route to %s", target)
-			_ = runCommandLine("traceroute", target)
+			runCommandLineLogged("traceroute", target)
 		case "tracepath":
 			printInfo("Tracing route to %s", target)
-			_ = runCommandLine("tracepath", target)
+			runCommandLineLogged("tracepath", target)
 		default:
 			printError("traceroute/tracepath not found")
 		}
-	default:
-		printError("Invalid option")
 	}
 
 	fmt.Println()
@@ -106,16 +109,16 @@ func networkInfo() {
 	printSection("🌐 Network Interface Information")
 	if checkIfInstalled("ip") {
 		printSubsection("IP Addresses:")
-		_ = runShellCommand("ip -br addr show")
+		runShellCommandLogged("ip -br addr show")
 
 		printSubsection("Routing Table:")
-		_ = runShellCommand("ip route")
+		runShellCommandLogged("ip route")
 	} else if checkIfInstalled("ifconfig") {
 		printSubsection("Network Interfaces:")
-		_ = runShellCommand("ifconfig")
+		runShellCommandLogged("ifconfig")
 
 		printSubsection("Routing Table:")
-		_ = runShellCommand("route -n")
+		runShellCommandLogged("route -n")
 	} else {
 		printError("No network tools available (ip or ifconfig)")
 	}
@@ -130,21 +133,21 @@ func bandwidthMonitor() {
 	case "iftop":
 		printInfo("Starting iftop (requires sudo, Ctrl+C to quit)")
 		fmt.Println()
-		_ = runCommandLine("sudo", "iftop")
+		runCommandLineLogged("sudo", "iftop")
 	case "nethogs":
 		printInfo("Starting nethogs (requires sudo, Ctrl+C to quit)")
 		fmt.Println()
-		_ = runCommandLine("sudo", "nethogs")
+		runCommandLineLogged("sudo", "nethogs")
 	case "vnstat":
 		printInfo("Network statistics")
-		_ = runCommandLine("vnstat")
+		runCommandLineLogged("vnstat")
 	case "netstat":
 		printWarning("No bandwidth monitoring tools found. Showing basic network statistics")
-		_ = runShellCommand("netstat -i")
+		runShellCommandLogged("netstat -i")
 	default:
 		printWarning("No bandwidth monitoring tools found")
 		printInfo("Install one of: iftop, nethogs, vnstat")
-		_ = runShellCommand("[ -f /proc/net/dev ] && cat /proc/net/dev")
+		runShellCommandLogged("[ -f /proc/net/dev ] && cat /proc/net/dev")
 	}
 
 	fmt.Println()
@@ -156,17 +159,17 @@ func firewallStatus() {
 	if checkIfInstalled("ufw") {
 		seen = true
 		printSubsection("UFW Status:")
-		_ = runShellCommand("sudo ufw status verbose")
+		runShellCommandLogged("sudo ufw status verbose")
 	}
 	if checkIfInstalled("iptables") {
 		seen = true
 		printSubsection("iptables Rules:")
-		_ = runShellCommand("sudo iptables -L -n -v --line-numbers")
+		runShellCommandLogged("sudo iptables -L -n -v --line-numbers")
 	}
 	if checkIfInstalled("firewall-cmd") {
 		seen = true
 		printSubsection("Firewalld Status:")
-		_ = runShellCommand("sudo firewall-cmd --list-all")
+		runShellCommandLogged("sudo firewall-cmd --list-all")
 	}
 	if !seen {
 		printWarning("No firewall tools detected")
@@ -179,16 +182,16 @@ func activeConnections() {
 
 	if checkIfInstalled("ss") {
 		printSubsection("Listening ports:")
-		_ = runShellCommand("ss -tulpn")
+		runShellCommandLogged("ss -tulpn")
 
 		printSubsection("Established connections:")
-		_ = runShellCommand("ss -tn state established")
+		runShellCommandLogged("ss -tn state established")
 	} else if checkIfInstalled("netstat") {
 		printSubsection("Listening ports:")
-		_ = runShellCommand("netstat -tulpn")
+		runShellCommandLogged("netstat -tulpn")
 
 		printSubsection("Established connections:")
-		_ = runShellCommand("netstat -tn | grep ESTABLISHED")
+		runShellCommandLogged("netstat -tn | grep ESTABLISHED")
 	} else {
 		printError("No network tools available (ss or netstat)")
 	}

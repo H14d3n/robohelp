@@ -36,11 +36,25 @@ func runHealthCheck() {
 func checkDiskSpace() {
 	printSubsection("📊 Disk Space:")
 
-	if out := commandOutput("df -h / | tail -n 1 | awk '{printf \"   Root: %s / %s (%s used)\", $3, $2, $5}'"); out != "" {
+	if out, err := commandOutput("df -h / | tail -n 1 | awk '{printf \"   Root: %s / %s (%s used)\", $3, $2, $5}'"); err != nil {
+		printWarning("Unable to read disk usage: %v", err)
+	} else if out != "" {
 		fmt.Println(out)
 	}
 
-	usage := parseInt(strings.TrimSuffix(commandOutput("df / | tail -n 1 | awk '{print $5}'"), "%"))
+	usageOutput, err := commandOutput("df / | tail -n 1 | awk '{print $5}'")
+	if err != nil {
+		printWarning("Unable to read disk usage: %v", err)
+		fmt.Println()
+		return
+	}
+
+	usage, err := parseInt(strings.TrimSuffix(usageOutput, "%"))
+	if err != nil {
+		printWarning("Unable to parse disk usage: %v", err)
+		fmt.Println()
+		return
+	}
 
 	switch {
 	case usage > 90:
@@ -57,7 +71,12 @@ func checkDiskSpace() {
 func checkSystemLoad() {
 	printSubsection("⚙️ System Load:")
 
-	loadAvg := commandOutput("uptime | awk -F'load average:' '{print $2}' | xargs")
+	loadAvg, err := commandOutput("uptime | awk -F'load average:' '{print $2}' | xargs")
+	if err != nil {
+		printWarning("Unable to check system load: %v", err)
+		fmt.Println()
+		return
+	}
 
 	if loadAvg == "" {
 		printWarning("Unable to check system load")
@@ -67,7 +86,19 @@ func checkSystemLoad() {
 
 	fmt.Printf("   Load Average: %s\n", loadAvg)
 	cpuCores := runtime.NumCPU()
-	firstLoad := parseFloat(strings.Fields(loadAvg)[0])
+	fields := strings.Fields(loadAvg)
+	if len(fields) == 0 {
+		printWarning("Unable to parse system load")
+		fmt.Println()
+		return
+	}
+
+	firstLoad, err := parseFloat(fields[0])
+	if err != nil {
+		printWarning("Unable to parse system load: %v", err)
+		fmt.Println()
+		return
+	}
 
 	if firstLoad > float64(cpuCores*2) {
 		printError("System load is high")
@@ -88,7 +119,19 @@ func checkBrokenPackages() {
 		return
 	}
 
-	broken := parseInt(commandOutput(pkgmgr.CheckBrokenCmd))
+	brokenOutput, err := commandOutput(pkgmgr.CheckBrokenCmd)
+	if err != nil {
+		printWarning("Unable to check broken packages: %v", err)
+		fmt.Println()
+		return
+	}
+
+	broken, err := parseInt(brokenOutput)
+	if err != nil {
+		printWarning("Unable to parse broken package count: %v", err)
+		fmt.Println()
+		return
+	}
 
 	if broken > 0 {
 		printWarning("Found %d broken package(s)", broken)
@@ -119,10 +162,29 @@ func checkSecurityUpdates() {
 
 	switch distro {
 	case "ubuntu", "debian", "kali":
-		_ = runShellCommand("sudo -n apt update >/dev/null 2>&1 || true")
+		runShellCommandLogged("sudo -n apt update >/dev/null 2>&1 || true")
 
-		securityUpdates := parseInt(commandOutput(pkgmgr.CheckSecurityCmd + " | xargs"))
-		totalUpdates := parseInt(commandOutput("apt list --upgradable 2>/dev/null | tail -n +2 | wc -l | xargs"))
+		securityOutput, err := commandOutput(pkgmgr.CheckSecurityCmd + " | xargs")
+		if err != nil {
+			printWarning("Unable to check security updates: %v", err)
+			break
+		}
+		securityUpdates, err := parseInt(securityOutput)
+		if err != nil {
+			printWarning("Unable to parse security update count: %v", err)
+			break
+		}
+
+		totalOutput, err := commandOutput("apt list --upgradable 2>/dev/null | tail -n +2 | wc -l | xargs")
+		if err != nil {
+			printWarning("Unable to check update count: %v", err)
+			break
+		}
+		totalUpdates, err := parseInt(totalOutput)
+		if err != nil {
+			printWarning("Unable to parse update count: %v", err)
+			break
+		}
 
 		switch {
 		case securityUpdates > 0:
@@ -141,11 +203,29 @@ func checkSecurityUpdates() {
 			break
 		}
 
-		updates := parseInt(commandOutput(pkgmgr.CheckSecurityCmd + " | xargs"))
+		updatesOutput, err := commandOutput(pkgmgr.CheckSecurityCmd + " | xargs")
+		if err != nil {
+			printWarning("Unable to check updates: %v", err)
+			break
+		}
+		updates, err := parseInt(updatesOutput)
+		if err != nil {
+			printWarning("Unable to parse update count: %v", err)
+			break
+		}
 		printUpdateCount(updates, false)
 
 	case "fedora", "centos", "rhel", "opensuse", "opensuse-tumbleweed", "sles":
-		updates := parseInt(commandOutput(pkgmgr.CheckSecurityCmd + " | xargs"))
+		updatesOutput, err := commandOutput(pkgmgr.CheckSecurityCmd + " | xargs")
+		if err != nil {
+			printWarning("Unable to check updates: %v", err)
+			break
+		}
+		updates, err := parseInt(updatesOutput)
+		if err != nil {
+			printWarning("Unable to parse update count: %v", err)
+			break
+		}
 		securityLabel := strings.Contains(distro, "fedora") || distro == "centos" || distro == "rhel"
 
 		printUpdateCount(updates, securityLabel)
