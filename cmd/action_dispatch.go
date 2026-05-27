@@ -21,6 +21,7 @@ import (
 )
 
 var rootRequiredActions = map[ui.Action]struct{}{
+	ui.ActionPackageManagement:  {},
 	ui.ActionPackageUpdate:      {},
 	ui.ActionPackageUpgrade:     {},
 	ui.ActionPackageFullUpgrade: {},
@@ -32,72 +33,89 @@ var rootRequiredActions = map[ui.Action]struct{}{
 	ui.ActionPackagePurge:       {},
 }
 
-func runAppAction(action ui.Action, value string) {
+func runAppAction(action ui.Action, value string) int {
 	// Root checks stay centralized here so both menu and CLI modes behave the same.
 	if actionRequiresRoot(action) {
-		requireRootOrExit()
+		if err := requireRoot(); err != nil {
+			printError("%s", err)
+			return 1
+		}
 	}
 
 	switch action {
 	case ui.ActionNone, ui.ActionExit:
-		return
+		return 0
+	case ui.ActionPackageManagement:
+		return runPackageManagement()
 	case ui.ActionPackageUpdate:
-		exitIfNonZero(packageUpdate(pkgmgr.UpdateCmd))
+		return packageUpdate(pkgmgr.UpdateCmd)
 	case ui.ActionPackageUpgrade:
-		exitIfNonZero(packageUpgrade(pkgmgr.UpgradeCmd))
+		return packageUpgrade(pkgmgr.UpgradeCmd)
 	case ui.ActionPackageFullUpgrade:
-		runFullUpgrade(fullUpgradeCommands())
+		return runFullUpgrade(fullUpgradeCommands())
 	case ui.ActionPackageDistUpgrade:
-		exitIfNonZero(packageDistUpgrade(pkgmgr.DistUpgradeCmd))
+		return packageDistUpgrade(pkgmgr.DistUpgradeCmd)
 	case ui.ActionPackageAutoremove:
-		exitIfNonZero(packageAutoremove(pkgmgr.AutoremoveCmd))
+		return packageAutoremove(pkgmgr.AutoremoveCmd)
 	case ui.ActionPackageAutoclean:
-		exitIfNonZero(packageAutoclean(pkgmgr.AutocleanCmd))
+		return packageAutoclean(pkgmgr.AutocleanCmd)
 	case ui.ActionPackageInstall:
-		runPackageValues(pkgmgr.InstallCmd, value, packageInstall)
+		return runPackageValues(pkgmgr.InstallCmd, value, packageInstall)
 	case ui.ActionPackageRemove:
-		runPackageValues(pkgmgr.RemoveCmd, value, packageRemove)
+		return runPackageValues(pkgmgr.RemoveCmd, value, packageRemove)
 	case ui.ActionPackagePurge:
-		runPackageValues(pkgmgr.PurgeCmd, value, packagePurge)
+		return runPackageValues(pkgmgr.PurgeCmd, value, packagePurge)
 	case ui.ActionPackageSearch:
 		term := strings.TrimSpace(value)
 		if term != "" {
-			exitIfNonZero(packageSearch(pkgmgr.SearchCmd, term))
+			return packageSearch(pkgmgr.SearchCmd, term)
 		}
+		return 0
 	case ui.ActionServiceManagement:
-		runServiceManagement()
+		return runServiceManagement()
 	case ui.ActionDiskManagement:
 		runDiskManagement()
+		return 0
 	case ui.ActionTroubleshoot:
 		runTroubleshoot()
+		return 0
 	case ui.ActionHealthCheck:
 		runHealthCheck()
+		return 0
 	case ui.ActionNetworkDiagnostics:
 		runNetworkDiagnostics()
+		return 0
 	case ui.ActionSSH:
-		runSSHSettings()
+		return runSSHSettings()
 	case ui.ActionAnsible:
-		runAnsible()
+		return runAnsible()
 	}
+
+	return 0
 }
 
-func runAppActionValues(action ui.Action, values []string) {
+func runAppActionValues(action ui.Action, values []string) int {
 	if actionRequiresRoot(action) {
-		requireRootOrExit()
+		if err := requireRoot(); err != nil {
+			printError("%s", err)
+			return 1
+		}
 	}
 
 	switch action {
 	case ui.ActionPackageInstall:
-		runPackageValueList(pkgmgr.InstallCmd, values, packageInstall)
+		return runPackageValueList(pkgmgr.InstallCmd, values, packageInstall)
 	case ui.ActionPackageSearch:
-		runPackageValueList(pkgmgr.SearchCmd, values, packageSearch)
+		return runPackageValueList(pkgmgr.SearchCmd, values, packageSearch)
 	case ui.ActionPackageRemove:
-		runPackageValueList(pkgmgr.RemoveCmd, values, packageRemove)
+		return runPackageValueList(pkgmgr.RemoveCmd, values, packageRemove)
 	case ui.ActionPackagePurge:
-		runPackageValueList(pkgmgr.PurgeCmd, values, packagePurge)
+		return runPackageValueList(pkgmgr.PurgeCmd, values, packagePurge)
 	default:
-		runAppAction(action, strings.Join(values, " "))
+		return runAppAction(action, strings.Join(values, " "))
 	}
+
+	return 0
 }
 
 func actionRequiresRoot(action ui.Action) bool {

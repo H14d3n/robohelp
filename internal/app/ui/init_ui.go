@@ -25,8 +25,7 @@ type Action int
 const (
 	ActionNone Action = iota
 	ActionExit
-	actionOpenPackageMenu
-	actionBack
+	ActionPackageManagement
 	ActionPackageUpdate
 	ActionPackageUpgrade
 	ActionPackageFullUpgrade
@@ -56,40 +55,112 @@ type Option struct {
 	Value string
 }
 
-type screen int
-
-const (
-	screenMain screen = iota
-	screenPackage
-	screenInput
-)
-
 type menuItem struct {
 	label  string
 	action Action
 }
 
-type menuModel struct {
-	screen      screen
+type listState struct {
 	cursor      int
 	width       int
 	height      int
 	offset      int
-	items       []menuItem
-	selected    Action
-	value       string
-	inputAction Action
-	inputPrompt string
-	inputValue  string
 	numberInput string
+	clickArmed  bool
+	clickIndex  int
+}
+
+func newListState() listState {
+	return listState{clickIndex: -1}
+}
+
+func (l *listState) handleWindowSize(msg tea.WindowSizeMsg, total int) {
+	l.width = msg.Width
+	l.height = msg.Height
+	l.syncScroll(total)
+}
+
+func (l *listState) syncScroll(total int) {
+	_, _ = visibleWindow(total, l.cursor, &l.offset, availableBodyRows(l.height))
+}
+
+func (l *listState) moveCursor(delta, total int) {
+	l.clearNumberInput()
+	l.clearClickArmed()
+	moveCursorIndex(&l.cursor, delta, total)
+	l.syncScroll(total)
+}
+
+func (l *listState) handleNumberInput(key string, total int) bool {
+	if selected, ok := consumeNumberSelection(&l.numberInput, key, total); ok {
+		l.cursor = selected
+		l.syncScroll(total)
+		l.clearClickArmed()
+		return true
+	}
+
+	return false
+}
+
+func (l *listState) handleMouseClick(total, mouseY int) (int, bool, bool) {
+	selected, ok := mouseSelectionIndex(l.height, l.offset, total, mouseY)
+	if !ok {
+		return 0, false, false
+	}
+
+	if l.clickArmed && l.clickIndex == selected {
+		l.clearClickArmed()
+		l.cursor = selected
+		l.clearNumberInput()
+		l.syncScroll(total)
+		return selected, true, true
+	}
+
+	l.cursor = selected
+	l.clearNumberInput()
+	l.syncScroll(total)
+	l.armClick(selected)
+	return selected, false, true
+}
+
+func (l *listState) handleMouseWheel(button tea.MouseButton, total int) {
+	switch button {
+	case tea.MouseWheelUp:
+		l.moveCursor(-1, total)
+	case tea.MouseWheelDown:
+		l.moveCursor(1, total)
+	}
+}
+
+func (l *listState) clearNumberInput() {
+	l.numberInput = ""
+}
+
+func (l *listState) clearClickArmed() {
+	l.clickArmed = false
+	l.clickIndex = -1
+}
+
+func (l *listState) armClick(index int) {
+	l.clickArmed = true
+	l.clickIndex = index
+}
+
+func (l *listState) reset() {
+	l.cursor = 0
+	l.offset = 0
+	l.clearNumberInput()
+	l.clearClickArmed()
+}
+
+type menuModel struct {
+	listState
+	items    []menuItem
+	selected Action
 }
 
 func RunMainMenu() (Result, error) {
-	return runMenu(screenMain)
-}
-
-func RunPackageMenu() (Result, error) {
-	return runMenu(screenPackage)
+	return runMenu()
 }
 
 func RunChoice(title string, options []Option) (string, bool, error) {
@@ -129,8 +200,8 @@ func RunConfirm(prompt string) (bool, error) {
 	return value == "yes", nil
 }
 
-func runMenu(start screen) (Result, error) {
-	program := newProgram(newMenuModel(start))
+func runMenu() (Result, error) {
+	program := newProgram(newMenuModel())
 	model, err := program.Run()
 	if err != nil {
 		return Result{Action: ActionNone}, err
@@ -138,7 +209,7 @@ func runMenu(start screen) (Result, error) {
 
 	switch typed := model.(type) {
 	case *menuModel:
-		return Result{Action: typed.selected, Value: typed.value}, nil
+		return Result{Action: typed.selected, Value: ""}, nil
 	default:
 		return Result{Action: ActionNone}, nil
 	}
@@ -151,16 +222,12 @@ func newProgram(model tea.Model) *tea.Program {
 func altScreenView(content string) tea.View {
 	view := tea.NewView(content)
 	view.AltScreen = true
+	view.MouseMode = tea.MouseModeCellMotion
 	return view
 }
 
-func newMenuModel(start screen) *menuModel {
-	model := &menuModel{screen: start}
-	if start == screenPackage {
-		model.showPackageMenu()
-		return model
-	}
-
+func newMenuModel() *menuModel {
+	model := &menuModel{listState: newListState()}
 	model.showMainMenu()
 	return model
 }
@@ -172,14 +239,13 @@ func (m *menuModel) Init() tea.Cmd {
 func (m *menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.syncScroll()
+		m.handleWindowSize(msg, len(m.items))
 		return m, nil
+	case tea.MouseClickMsg:
+		return m.handleMenuMouseClick(msg)
+	case tea.MouseWheelMsg:
+		return m.handleMenuMouseWheel(msg)
 	case tea.KeyMsg:
-		if m.screen == screenInput {
-			return m.handleInputKey(msg)
-		}
 		return m.handleMenuKey(msg)
 	}
 
@@ -192,10 +258,10 @@ func (m *menuModel) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.selected = ActionExit
 		return m, tea.Quit
 	case "k":
-		m.moveCursor(-1)
+		m.moveCursor(-1, len(m.items))
 		return m, nil
 	case "j":
-		m.moveCursor(1)
+		m.moveCursor(1, len(m.items))
 		return m, nil
 	case "enter":
 		m.clearNumberInput()
@@ -205,27 +271,15 @@ func (m *menuModel) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.activateSelected()
 	case "esc":
 		m.clearNumberInput()
-		if m.screen == screenPackage {
-			m.showMainMenu()
-			return m, nil
-		}
 		m.selected = ActionExit
 		return m, tea.Quit
 	}
 
-	if m.screen != screenMain {
-		if selected, ok := consumeNumberSelection(&m.numberInput, msg.String(), len(m.items)); ok {
-			m.cursor = selected
-			m.syncScroll()
-			return m, nil
-		}
-	}
-
 	switch msg.Key().Code {
 	case tea.KeyUp:
-		m.moveCursor(-1)
+		m.moveCursor(-1, len(m.items))
 	case tea.KeyDown:
-		m.moveCursor(1)
+		m.moveCursor(1, len(m.items))
 	default:
 		m.clearNumberInput()
 	}
@@ -233,139 +287,68 @@ func (m *menuModel) handleMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *menuModel) handleMenuMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	if msg.Mouse().Button != tea.MouseLeft {
+		return m, nil
+	}
+
+	_, activate, ok := m.handleMouseClick(len(m.items), msg.Mouse().Y)
+	if !ok {
+		return m, nil
+	}
+	if activate {
+		return m.activateSelected()
+	}
+
+	return m, nil
+}
+
+func (m *menuModel) handleMenuMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
+	m.handleMouseWheel(msg.Mouse().Button, len(m.items))
+	return m, nil
+}
+
 func (m *menuModel) activateSelected() (tea.Model, tea.Cmd) {
 	selected := m.items[m.cursor].action
 
-	switch selected {
-	case actionOpenPackageMenu:
-		m.showPackageMenu()
-	case actionBack:
-		m.showMainMenu()
-	case ActionExit:
+	if selected == ActionExit {
 		m.selected = ActionExit
 		return m, tea.Quit
-	default:
-		if actionNeedsInput(selected) {
-			m.openInput(selected)
-			return m, nil
-		}
-
-		m.selected = selected
-		return m, tea.Quit
 	}
 
-	return m, nil
+	m.selected = selected
+	return m, tea.Quit
 }
 
-func (m *menuModel) handleInputKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	key := msg.Key()
-
-	switch key.Code {
-	case tea.KeyEnter:
-		value := strings.TrimSpace(m.inputValue)
-		if value == "" {
-			m.showPackageMenu()
-			m.inputValue = ""
-			return m, nil
-		}
-
-		m.value = value
-		m.selected = m.inputAction
-		return m, tea.Quit
-	case tea.KeyEsc:
-		m.showPackageMenu()
-		m.inputValue = ""
-		return m, nil
-	case tea.KeyBackspace, tea.KeyDelete:
-		m.inputValue = deleteLastRune(m.inputValue)
-		return m, nil
-	default:
-		if key.Text != "" {
-			m.inputValue += key.Text
-		}
-	}
-
-	return m, nil
-}
-
-func (m *menuModel) moveCursor(delta int) {
-	m.clearNumberInput()
-	moveCursorIndex(&m.cursor, delta, len(m.items))
-	m.syncScroll()
-}
-
-func (m *menuModel) setMenu(screen screen, items []menuItem) {
-	m.screen = screen
+func (m *menuModel) setMenu(items []menuItem) {
 	m.items = items
-	m.cursor = 0
-	m.offset = 0
-	m.clearNumberInput()
+	m.reset()
 }
 
 func (m *menuModel) showMainMenu() {
-	m.setMenu(screenMain, mainMenuItems)
-}
-
-func (m *menuModel) showPackageMenu() {
-	m.setMenu(screenPackage, packageMenuItems)
-}
-
-func (m *menuModel) openInput(action Action) {
-	m.screen = screenInput
-	m.inputAction = action
-	m.inputPrompt = promptForAction(action)
-	m.inputValue = ""
-	m.offset = 0
-	m.clearNumberInput()
-}
-
-func (m *menuModel) clearNumberInput() {
-	m.numberInput = ""
+	m.setMenu(mainMenuItems)
 }
 
 func (m *menuModel) View() tea.View {
 	var builder strings.Builder
 	title := "Main Menu"
-
-	switch m.screen {
-	case screenPackage:
-		title = "Package Management"
-	case screenInput:
-		title = "Package Input"
-	}
-
-	if m.screen == screenInput {
-		builder.WriteString(InputLabelStyle.Render(m.inputPrompt))
-		builder.WriteString("\n")
-		builder.WriteString(InputValueStyle.Render("> " + m.inputValue))
-		return altScreenView(renderScreen(m.width, m.height, title, builder.String(), "Enter to confirm, Esc to cancel"))
-	}
-
 	lineWidth := menuBodyWidth(m.width)
 	start, end := visibleWindow(len(m.items), m.cursor, &m.offset, availableBodyRows(m.height))
 	for i := start; i < end; i++ {
 		item := m.items[i]
-		label := item.label
-		if m.screen != screenMain {
-			label = numberedLabel(i, label)
-		}
-
-		builder.WriteString(menuLine(lineWidth, label, m.cursor == i))
+		builder.WriteString(menuLine(lineWidth, item.label, m.cursor == i))
 		builder.WriteString("\n")
 	}
 
 	body := strings.TrimRight(builder.String(), "\n")
-	help := "Use ↑/↓ or j/k, Enter to select, Esc to go back, q to quit"
-	if m.screen != screenMain {
-		help = "Use ↑/↓ or j/k, type item number to jump, Enter to select, Esc to go back"
-	}
+	help := "Use ↑/↓ or j/k, Enter or double-click to select, Esc/q to quit"
 	help = appendWindowStatus(help, start, end, len(m.items))
 
 	return altScreenView(renderScreen(m.width, m.height, title, body, help))
 }
 
 var mainMenuItems = []menuItem{
-	{label: "📦 Package Management", action: actionOpenPackageMenu},
+	{label: "📦 Package Management", action: ActionPackageManagement},
 	{label: "⚙️  Service Management", action: ActionServiceManagement},
 	{label: "💾 Disk Management", action: ActionDiskManagement},
 	{label: "🔧 Troubleshooting Wizard", action: ActionTroubleshoot},
@@ -374,44 +357,6 @@ var mainMenuItems = []menuItem{
 	{label: "🔐 SSH Configuration", action: ActionSSH},
 	{label: "🤖 Ansible Management (AFM)", action: ActionAnsible},
 	{label: "Exit", action: ActionExit},
-}
-
-var packageMenuItems = []menuItem{
-	{label: "Update Package Repositories", action: ActionPackageUpdate},
-	{label: "Upgrade Installed Packages", action: ActionPackageUpgrade},
-	{label: "Full System Upgrade", action: ActionPackageFullUpgrade},
-	{label: "Distribution Upgrade", action: ActionPackageDistUpgrade},
-	{label: "Remove Unnecessary Packages", action: ActionPackageAutoremove},
-	{label: "Clean Local Repository", action: ActionPackageAutoclean},
-	{label: "Install Package", action: ActionPackageInstall},
-	{label: "Remove Package", action: ActionPackageRemove},
-	{label: "Purge Package", action: ActionPackagePurge},
-	{label: "Search Package", action: ActionPackageSearch},
-	{label: "Back", action: actionBack},
-}
-
-func actionNeedsInput(action Action) bool {
-	switch action {
-	case ActionPackageInstall, ActionPackageRemove, ActionPackagePurge, ActionPackageSearch:
-		return true
-	default:
-		return false
-	}
-}
-
-func promptForAction(action Action) string {
-	switch action {
-	case ActionPackageInstall:
-		return "Enter package name(s) to install (space-separated):"
-	case ActionPackageRemove:
-		return "Enter package name(s) to remove (space-separated):"
-	case ActionPackagePurge:
-		return "Enter package name(s) to purge (space-separated):"
-	case ActionPackageSearch:
-		return "Enter search term:"
-	default:
-		return "Enter value:"
-	}
 }
 
 func deleteLastRune(value string) string {
@@ -424,19 +369,15 @@ func deleteLastRune(value string) string {
 }
 
 type choiceModel struct {
-	title       string
-	options     []Option
-	cursor      int
-	width       int
-	height      int
-	offset      int
-	selected    string
-	cancelled   bool
-	numberInput string
+	title   string
+	options []Option
+	listState
+	selected  string
+	cancelled bool
 }
 
 func newChoiceModel(title string, options []Option) *choiceModel {
-	return &choiceModel{title: title, options: options}
+	return &choiceModel{title: title, options: options, listState: newListState()}
 }
 
 func (m *choiceModel) Init() tea.Cmd {
@@ -446,10 +387,12 @@ func (m *choiceModel) Init() tea.Cmd {
 func (m *choiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		m.syncScroll()
+		m.handleWindowSize(msg, len(m.options))
 		return m, nil
+	case tea.MouseClickMsg:
+		return m.handleChoiceMouseClick(msg)
+	case tea.MouseWheelMsg:
+		return m.handleChoiceMouseWheel(msg)
 	case tea.KeyMsg:
 		return m.handleChoiceKey(msg)
 	}
@@ -463,10 +406,10 @@ func (m *choiceModel) handleChoiceKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cancelled = true
 		return m, tea.Quit
 	case "k":
-		m.moveCursor(-1)
+		m.moveCursor(-1, len(m.options))
 		return m, nil
 	case "j":
-		m.moveCursor(1)
+		m.moveCursor(1, len(m.options))
 		return m, nil
 	case "enter":
 		m.clearNumberInput()
@@ -478,17 +421,15 @@ func (m *choiceModel) handleChoiceKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	if selected, ok := consumeNumberSelection(&m.numberInput, msg.String(), len(m.options)); ok {
-		m.cursor = selected
-		m.syncScroll()
+	if m.handleNumberInput(msg.String(), len(m.options)) {
 		return m, nil
 	}
 
 	switch msg.Key().Code {
 	case tea.KeyUp:
-		m.moveCursor(-1)
+		m.moveCursor(-1, len(m.options))
 	case tea.KeyDown:
-		m.moveCursor(1)
+		m.moveCursor(1, len(m.options))
 	default:
 		m.clearNumberInput()
 	}
@@ -496,14 +437,26 @@ func (m *choiceModel) handleChoiceKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *choiceModel) moveCursor(delta int) {
-	m.clearNumberInput()
-	moveCursorIndex(&m.cursor, delta, len(m.options))
-	m.syncScroll()
+func (m *choiceModel) handleChoiceMouseClick(msg tea.MouseClickMsg) (tea.Model, tea.Cmd) {
+	if msg.Mouse().Button != tea.MouseLeft {
+		return m, nil
+	}
+
+	selected, activate, ok := m.handleMouseClick(len(m.options), msg.Mouse().Y)
+	if !ok {
+		return m, nil
+	}
+	if !activate {
+		return m, nil
+	}
+
+	m.selected = m.options[selected].Value
+	return m, tea.Quit
 }
 
-func (m *choiceModel) clearNumberInput() {
-	m.numberInput = ""
+func (m *choiceModel) handleChoiceMouseWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
+	m.handleMouseWheel(msg.Mouse().Button, len(m.options))
+	return m, nil
 }
 
 func (m *choiceModel) View() tea.View {
@@ -518,7 +471,7 @@ func (m *choiceModel) View() tea.View {
 	}
 
 	body := strings.TrimRight(builder.String(), "\n")
-	help := "Use ↑/↓ or j/k, type item number to jump, Enter to select, Esc/q to cancel"
+	help := "Use ↑/↓ or j/k, type item number to jump, Enter or double-click to select, Esc/q to cancel"
 	help = appendWindowStatus(help, start, end, len(m.options))
 
 	return altScreenView(renderScreen(m.width, m.height, m.title, body, help))
@@ -606,14 +559,6 @@ func numberedLabel(index int, label string) string {
 	return strconv.Itoa(index+1) + ". " + label
 }
 
-func (m *menuModel) syncScroll() {
-	_, _ = visibleWindow(len(m.items), m.cursor, &m.offset, availableBodyRows(m.height))
-}
-
-func (m *choiceModel) syncScroll() {
-	_, _ = visibleWindow(len(m.options), m.cursor, &m.offset, availableBodyRows(m.height))
-}
-
 func visibleWindow(total, cursor int, offset *int, rows int) (int, int) {
 	if total == 0 {
 		*offset = 0
@@ -673,6 +618,60 @@ func availableBodyRows(height int) int {
 	}
 
 	return rows
+}
+
+func menuBodyTop(height int) int {
+	if height <= 0 {
+		return -1
+	}
+
+	bannerLines := strings.Count(StartupBanner(), "\n") + 1
+	spacer := 0
+	if height >= 28 {
+		spacer = 1
+	}
+
+	if height < 28 {
+		return bannerLines + spacer + 3
+	}
+
+	return bannerLines + spacer + 6
+}
+
+func mouseSelectionIndex(height, offset, total, mouseY int) (int, bool) {
+	if total == 0 {
+		return 0, false
+	}
+
+	bodyTop := menuBodyTop(height)
+	if bodyTop < 0 || mouseY < bodyTop {
+		return 0, false
+	}
+
+	rows := availableBodyRows(height)
+	if rows < 1 {
+		return 0, false
+	}
+
+	start := offset
+	if start < 0 {
+		start = 0
+	}
+	if start >= total {
+		return 0, false
+	}
+
+	end := start + rows
+	if end > total {
+		end = total
+	}
+
+	relative := mouseY - bodyTop
+	if relative < 0 || relative >= end-start {
+		return 0, false
+	}
+
+	return start + relative, true
 }
 
 func appendWindowStatus(help string, start, end, total int) string {

@@ -24,34 +24,38 @@ import (
 	"github.com/h14d3n/robohelp/internal/app/ui"
 )
 
-func runAnsible() {
+func runAnsible() int {
 	if !checkIfInstalled("ansible") {
 		printError("Ansible is not installed. Install with robohelp -pi ansible-core or via pip install ansible")
-		os.Exit(1)
+		return 1
 	}
 
-	switch menuChoice("🤖 Ansible Fast Management (AFM)", []string{
+	options := []string{
 		"Run Playbook (with Flags)",
 		"Test Connection (Ping Hosts)",
 		"Live-Fire Command",
 		"View Inventory",
 		"View Last Run Log",
 		"Exit",
-	}) {
-	case "1":
-		runAnsiblePlaybook()
-	case "2":
-		runAnsiblePing()
-	case "3":
-		runAnsibleLiveFire()
-	case "4":
-		viewAnsibleInventory()
-	case "5":
-		viewAnsibleLog()
-	case "6", "":
-		return
+	}
+	choice, ok := menuSelect("🤖 Ansible Fast Management (AFM)", options)
+	if !ok || choice == len(options)-1 {
+		return 0
+	}
+
+	switch choice {
+	case 0:
+		return runAnsiblePlaybook()
+	case 1:
+		return runAnsiblePing()
+	case 2:
+		return runAnsibleLiveFire()
+	case 3:
+		return viewAnsibleInventory()
+	case 4:
+		return viewAnsibleLog()
 	default:
-		printError("Unsupported option")
+		return 0
 	}
 }
 
@@ -70,13 +74,13 @@ func findPlaybooks() []string {
 	return playbooks
 }
 
-func runAnsiblePlaybook() {
+func runAnsiblePlaybook() int {
 	printSection("🤖 Run Playbook")
 
 	playbooks := findPlaybooks()
 	if len(playbooks) == 0 {
 		printError("No playbook files (.yml) found in the current directory")
-		return
+		return 1
 	}
 
 	options := make([]ui.Option, 0, len(playbooks))
@@ -88,7 +92,7 @@ func runAnsiblePlaybook() {
 	}
 	playbook, ok := chooseValue("📋 Select Playbook", options)
 	if !ok {
-		return
+		return 0
 	}
 
 	additionalFlags := promptLine("Enter additional action flag for extra-vars action=<value>, or leave empty:")
@@ -100,7 +104,7 @@ func runAnsiblePlaybook() {
 	inventory := ansibleInventoryPath()
 	if inventory == "" {
 		printError("No inventory file found (expected hosts.yml or hosts.*)")
-		return
+		return 1
 	}
 
 	args := []string{"-i", inventory, playbook}
@@ -116,90 +120,102 @@ func runAnsiblePlaybook() {
 	fmt.Println()
 	time.Sleep(5 * time.Second)
 
-	if rc := runCommandLine("ansible-playbook", args...); rc == 0 {
+	rc := runCommandLine("ansible-playbook", args...)
+	if rc == 0 {
 		writeAnsibleLog("Successfully ran playbook: " + playbook)
-	} else {
-		writeAnsibleLog("Running playbook failed: " + playbook)
-		os.Exit(rc)
+		return 0
 	}
+	writeAnsibleLog("Running playbook failed: " + playbook)
+	return rc
 }
 
-func runAnsiblePing() {
+func runAnsiblePing() int {
 	printSection("🤖 Test Connection")
 
 	inventory := ansibleInventoryPath()
 	if inventory == "" {
 		printError("No inventory file found (expected hosts.yml or hosts.*)")
-		return
+		return 1
 	}
 
 	printInfo("Running Ansible ping against all hosts")
 
-	if rc := runCommandLine("ansible", "all", "-i", inventory, "-m", "ping"); rc == 0 {
+	rc := runCommandLine("ansible", "all", "-i", inventory, "-m", "ping")
+	if rc == 0 {
 		writeAnsibleLog("Ping ran successfully")
-	} else {
-		writeAnsibleLog("Running Ping with inventory file failed")
-		os.Exit(rc)
+		return 0
 	}
+	writeAnsibleLog("Running Ping with inventory file failed")
+	return rc
 }
 
-func runAnsibleLiveFire() {
+func runAnsibleLiveFire() int {
 	printSection("🤖 Live-Fire Command")
 
 	inventory := ansibleInventoryPath()
 	if inventory == "" {
 		printError("No inventory file found (expected hosts.yml or hosts.*)")
-		return
+		return 1
 	}
 
 	command := promptLine("Which command would you like to Live-Fire?")
 	if command == "" {
-		return
+		return 0
 	}
-	targetChoice := menuChoice("Which hosts should be targeted?", []string{"All", "Write Own (single host or host groups)"})
+	choice, ok := menuSelect("Which hosts should be targeted?", []string{"All", "Write Own (single host or host groups)"})
+	if !ok {
+		return 0
+	}
+
 	target := "all"
-	if targetChoice == "2" {
+	if choice == 1 {
 		target = promptLine("Enter host or group (e.g. webservers, nagios):")
 		if target == "" {
-			return
+			return 0
 		}
 	}
 
 	printInfo("Targeting: %s", target)
 	printInfo("Command: %s", command)
-	_ = runCommandLine("ansible", "-i", inventory, target, "-m", "shell", "-a", command)
+	rc := runCommandLine("ansible", "-i", inventory, target, "-m", "shell", "-a", command)
+	if rc != 0 {
+		return rc
+	}
+	return 0
 }
 
-func viewAnsibleInventory() {
+func viewAnsibleInventory() int {
 	printSection("📄 Inventory")
 
 	inventory := ansibleInventoryPath()
 	if inventory == "" {
 		printError("No inventory file found (expected hosts.yml or hosts.*)")
-		return
+		return 1
 	}
 
 	printInfo("Showing inventory: %s", inventory)
 	pager := os.Getenv("PAGER")
 	if pager != "" {
 		if rc := exitCodeFromError(runShellCommand(pager + " " + shellQuote(inventory))); rc == 0 {
-			return
+			return 0
 		}
 	}
-	_ = runShellCommand("cat " + shellQuote(inventory))
+	runShellCommandLogged("cat " + shellQuote(inventory))
+	return 0
 }
 
-func viewAnsibleLog() {
+func viewAnsibleLog() int {
 	printSection("📄 Last Run Log")
 
 	logFile := ansibleLogPath()
 	if _, err := os.Stat(logFile); err != nil {
 		printError("No Ansible log found at %s", logFile)
-		return
+		return 1
 	}
 
 	printInfo("Showing log: %s", logFile)
-	_ = runShellCommand("tail -n 50 " + shellQuote(logFile))
+	runShellCommandLogged("tail -n 50 " + shellQuote(logFile))
+	return 0
 }
 
 func ansibleInventoryPath() string {

@@ -44,18 +44,19 @@ var (
 	DetectedDistro   = ""
 )
 
-func InitPkg() {
+func InitPkg() error {
 	release := detectRelease()
 	DetectedDistro = release
 	if release == "" {
-		return
+		return nil
 	}
 
 	// Commands are looked up once during startup and reused by cmd package actions.
 	if !setDistroCommands(release) {
-		fmt.Fprintln(os.Stderr, "Unsupported distro: "+release+". Please edit the config manually.")
-		os.Exit(1)
+		return fmt.Errorf("unsupported distro: %s. Please edit the config manually", release)
 	}
+
+	return nil
 }
 
 func detectRelease() string {

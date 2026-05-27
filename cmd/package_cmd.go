@@ -15,20 +15,76 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/h14d3n/robohelp/internal/app/ui"
 	"github.com/h14d3n/robohelp/internal/pkgmgr"
 )
 
-func runPackageManagement() {
-	runMenuAndDispatch(ui.RunPackageMenu)
+func runPackageManagement() int {
+	options := []string{
+		"Update Package Repositories",
+		"Upgrade Installed Packages",
+		"Full System Upgrade",
+		"Distribution Upgrade",
+		"Remove Unnecessary Packages",
+		"Clean Local Repository",
+		"Install Package",
+		"Remove Package",
+		"Purge Package",
+		"Search Package",
+		"Exit",
+	}
+
+	choice, ok := menuSelect("📦 Package Management", options)
+	if !ok || choice == len(options)-1 {
+		return 0
+	}
+
+	switch choice {
+	case 0:
+		return packageUpdate(pkgmgr.UpdateCmd)
+	case 1:
+		return packageUpgrade(pkgmgr.UpgradeCmd)
+	case 2:
+		return runFullUpgrade(fullUpgradeCommands())
+	case 3:
+		return packageDistUpgrade(pkgmgr.DistUpgradeCmd)
+	case 4:
+		return packageAutoremove(pkgmgr.AutoremoveCmd)
+	case 5:
+		return packageAutoclean(pkgmgr.AutocleanCmd)
+	case 6:
+		value := promptLine("Enter package name(s) to install (space-separated):")
+		if strings.TrimSpace(value) == "" {
+			return 0
+		}
+		return runPackageValues(pkgmgr.InstallCmd, value, packageInstall)
+	case 7:
+		value := promptLine("Enter package name(s) to remove (space-separated):")
+		if strings.TrimSpace(value) == "" {
+			return 0
+		}
+		return runPackageValues(pkgmgr.RemoveCmd, value, packageRemove)
+	case 8:
+		value := promptLine("Enter package name(s) to purge (space-separated):")
+		if strings.TrimSpace(value) == "" {
+			return 0
+		}
+		return runPackageValues(pkgmgr.PurgeCmd, value, packagePurge)
+	case 9:
+		value := promptLine("Enter search term:")
+		if strings.TrimSpace(value) == "" {
+			return 0
+		}
+		return packageSearch(pkgmgr.SearchCmd, value)
+	default:
+		return 0
+	}
 }
 
-func runFullUpgrade(commands []string) {
-	printCommandHeader("⚙  Running full upgrade")
+func runFullUpgrade(commands []string) int {
+	printSection("⚙  Running full upgrade")
 
 	for _, command := range commands {
 		if !isAvailableCommand(command) {
@@ -44,12 +100,13 @@ func runFullUpgrade(commands []string) {
 		if rc != 0 {
 			printError("An error occurred during the upgrade. Exit code: %d", rc)
 			fmt.Println()
-			os.Exit(rc)
+			return rc
 		}
 	}
 
 	printSuccess("Full upgrade completed successfully!")
 	fmt.Println()
+	return 0
 }
 
 func fullUpgradeCommands() []string {
@@ -62,7 +119,7 @@ func fullUpgradeCommands() []string {
 }
 
 func packageUpdate(command string) int {
-	printCommandHeader("📦 Updating package metadata")
+	printSection("📦 Updating package metadata")
 	return runAndReport(
 		command,
 		"Updated repositories successfully on %s.",
@@ -72,7 +129,7 @@ func packageUpdate(command string) int {
 }
 
 func packageUpgrade(command string) int {
-	printCommandHeader("📦 Upgrading installed packages")
+	printSection("📦 Upgrading installed packages")
 	return runAndReport(
 		command,
 		"Installed updates successfully on %s.",
@@ -82,7 +139,7 @@ func packageUpgrade(command string) int {
 }
 
 func packageDistUpgrade(command string) int {
-	printCommandHeader("📦 Upgrading distribution and dependencies")
+	printSection("📦 Upgrading distribution and dependencies")
 	if !isAvailableCommand(command) {
 		printWarning("This command is not available for your distribution")
 		fmt.Println()
@@ -98,7 +155,7 @@ func packageDistUpgrade(command string) int {
 }
 
 func packageAutoremove(command string) int {
-	printCommandHeader("🧹 Removing unnecessary packages")
+	printSection("🧹 Removing unnecessary packages")
 
 	if isPacmanDistro() {
 		orphans := pacmanOrphans()
@@ -126,7 +183,7 @@ func packageAutoremove(command string) int {
 }
 
 func packageAutoclean(command string) int {
-	printCommandHeader("🧼 Cleaning local repository")
+	printSection("🧼 Cleaning local repository")
 	return runAndReport(
 		command,
 		"Autoclean completed successfully on %s.",
@@ -136,7 +193,7 @@ func packageAutoclean(command string) int {
 }
 
 func packageInstall(command, value string) int {
-	printCommandHeader("📦 Installing package: " + value)
+	printSection("📦 Installing package: " + value)
 	return runAndReport(
 		command+" "+shellQuote(value),
 		"%s installed successfully!",
@@ -146,7 +203,7 @@ func packageInstall(command, value string) int {
 }
 
 func packageRemove(command, value string) int {
-	printCommandHeader("📦 Removing package: " + value)
+	printSection("📦 Removing package: " + value)
 	return runAndReport(
 		command+" "+shellQuote(value),
 		"%s removed successfully!",
@@ -156,7 +213,7 @@ func packageRemove(command, value string) int {
 }
 
 func packagePurge(command, value string) int {
-	printCommandHeader("📦 Purging package: " + value)
+	printSection("📦 Purging package: " + value)
 	return runAndReport(
 		command+" "+shellQuote(value),
 		"%s purged successfully!",
@@ -166,7 +223,7 @@ func packagePurge(command, value string) int {
 }
 
 func packageSearch(command, value string) int {
-	printCommandHeader("🔍 Searching for: " + value)
+	printSection("🔍 Searching for: " + value)
 	fullCommand := command + " " + shellQuote(value)
 	err := runShellCommand(fullCommand)
 	rc := exitCodeFromError(err)
@@ -174,23 +231,20 @@ func packageSearch(command, value string) int {
 	return rc
 }
 
-func exitIfNonZero(code int) {
-	if code != 0 {
-		os.Exit(code)
-	}
+func runPackageValues(command, value string, runner func(string, string) int) int {
+	return runPackageValueList(command, strings.Fields(value), runner)
 }
 
-func runPackageValues(command, value string, runner func(string, string) int) {
-	runPackageValueList(command, strings.Fields(value), runner)
-}
-
-func runPackageValueList(command string, values []string, runner func(string, string) int) {
+func runPackageValueList(command string, values []string, runner func(string, string) int) int {
 	for _, pkg := range values {
 		if strings.TrimSpace(pkg) == "" {
 			continue
 		}
-		exitIfNonZero(runner(command, pkg))
+		if rc := runner(command, pkg); rc != 0 {
+			return rc
+		}
 	}
+	return 0
 }
 
 func runAndReport(command, successMessage, failureMessage string, args ...any) int {

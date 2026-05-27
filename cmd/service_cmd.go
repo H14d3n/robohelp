@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"os"
 	"runtime"
 	"strings"
 )
@@ -211,13 +210,13 @@ func serviceBackendOrWarn() (serviceBackend, bool) {
 	return serviceBackend{}, false
 }
 
-func runServiceManagement() {
+func runServiceManagement() int {
 	backend, ok := serviceBackendOrWarn()
 	if !ok {
-		os.Exit(1)
+		return 1
 	}
 
-	switch menuChoice("⚙️  Service Management ("+backend.name+")", []string{
+	options := []string{
 		"List All Services",
 		"List Running Services",
 		"List Failed Services",
@@ -225,104 +224,113 @@ func runServiceManagement() {
 		"Enable/Disable Service",
 		"Check Service Status",
 		"Exit",
-	}) {
-	case "1":
+	}
+	choice, ok := menuSelect("⚙️  Service Management ("+backend.name+")", options)
+	if !ok || choice == len(options)-1 {
+		return 0
+	}
+
+	switch choice {
+	case 0:
 		printSection("📋 All Services")
-		_ = runShellCommand(backend.listAll)
-	case "2":
+		return runShellCommandLogged(backend.listAll)
+	case 1:
 		printSection("▶️  Running Services")
-		_ = runShellCommand(backend.listRunning)
-	case "3":
+		return runShellCommandLogged(backend.listRunning)
+	case 2:
 		printSection("❌ Failed Services")
 		if backend.supportsFailed {
-			_ = runShellCommand(backend.listFailed)
-		} else {
-			printWarning("%s does not provide a failed-service listing", backend.name)
+			return runShellCommandLogged(backend.listFailed)
 		}
-	case "4":
-		serviceControl(backend)
-	case "5":
-		serviceEnableDisable(backend)
-	case "6":
-		serviceStatus(backend)
-	case "7", "":
-		return
+		printWarning("%s does not provide a failed-service listing", backend.name)
+		return 0
+	case 3:
+		return serviceControl(backend)
+	case 4:
+		return serviceEnableDisable(backend)
+	case 5:
+		return serviceStatus(backend)
 	default:
-		printError("Invalid option selected")
+		return 0
 	}
 }
 
-func serviceControl(backend serviceBackend) {
+func serviceControl(backend serviceBackend) int {
 	serviceName := promptServiceName(backend, "📋 Current running services:", previewServiceCommand(backend.listRunning))
 	if serviceName == "" {
-		return
+		return 0
 	}
 
-	action := menuChoice("Action for "+serviceName, []string{"Start", "Stop", "Restart"})
+	choice, ok := menuSelect("Action for "+serviceName, []string{"Start", "Stop", "Restart"})
+	if !ok {
+		return 0
+	}
+
 	command := ""
-	switch action {
-	case "1":
+	switch choice {
+	case 0:
 		printInfo("Starting %s", serviceName)
 		command = backend.startCommand(serviceName)
-	case "2":
+	case 1:
 		printInfo("Stopping %s", serviceName)
 		command = backend.stopCommand(serviceName)
-	case "3":
+	case 2:
 		if !backend.supportsRestart {
 			printWarning("%s does not support restart directly", backend.name)
-			return
+			return 0
 		}
 		printInfo("Restarting %s", serviceName)
 		command = backend.restartCommand(serviceName)
-	default:
-		printError("Invalid option selected")
-		return
 	}
 
-	if runServiceOperation(command) == 0 {
-		_ = runShellCommand(backend.statusCommand(serviceName))
+	rc := runServiceOperation(command)
+	if rc == 0 {
+		runShellCommandLogged(backend.statusCommand(serviceName))
 	}
+	return rc
 }
 
-func serviceEnableDisable(backend serviceBackend) {
+func serviceEnableDisable(backend serviceBackend) int {
 	if !backend.supportsEnable {
 		printWarning("%s does not support enable/disable from RoboHelp yet", backend.name)
-		return
+		return 0
 	}
 
 	serviceName := promptServiceName(backend, "📋 Current services:", backend.listPreview)
 	if serviceName == "" {
-		return
+		return 0
 	}
 
-	action := menuChoice("Action for "+serviceName, []string{"Enable (start on boot)", "Disable (do not start on boot)"})
+	choice, ok := menuSelect("Action for "+serviceName, []string{"Enable (start on boot)", "Disable (do not start on boot)"})
+	if !ok {
+		return 0
+	}
+
 	command := ""
-	switch action {
-	case "1":
+	switch choice {
+	case 0:
 		printInfo("Enabling %s", serviceName)
 		command = backend.enableCommand(serviceName)
-	case "2":
+	case 1:
 		printInfo("Disabling %s", serviceName)
 		command = backend.disableCommand(serviceName)
-	default:
-		printError("Invalid option selected")
-		return
 	}
 
-	runServiceOperation(command)
+	return runServiceOperation(command)
 }
 
-func serviceStatus(backend serviceBackend) {
+func serviceStatus(backend serviceBackend) int {
 	serviceName := promptServiceName(backend, "📋 Current services:", backend.listPreview)
 	if serviceName == "" {
-		return
+		return 0
 	}
 
 	printSection("📊 Status: " + serviceName)
 	rc := exitCodeFromError(runShellCommand(backend.statusCommand(serviceName)))
 	if rc != 0 {
-		os.Exit(rc)
+		return rc
 	}
+	return 0
 }
 
 func previewServiceCommand(command string) string {
@@ -332,7 +340,7 @@ func previewServiceCommand(command string) string {
 func promptServiceName(backend serviceBackend, heading, listCommand string) string {
 	// Reuse the same preview flow before any service-specific action.
 	printSubsection(heading)
-	_ = runShellCommand(listCommand)
+	runShellCommandLogged(listCommand)
 	waitForEnter()
 	return promptLine(backend.serviceNameHelp)
 }
@@ -345,6 +353,5 @@ func runServiceOperation(command string) int {
 	}
 
 	printError("Operation failed")
-	os.Exit(rc)
 	return rc
 }

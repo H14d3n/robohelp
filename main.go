@@ -14,11 +14,17 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/h14d3n/robohelp/cmd"
 	"github.com/h14d3n/robohelp/internal/pkgmgr"
 )
 
 func main() {
-	pkgmgr.InitPkg()
+	if err := pkgmgr.InitPkg(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	cmd.InitCmd()
 }

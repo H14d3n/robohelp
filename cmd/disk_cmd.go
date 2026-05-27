@@ -22,7 +22,7 @@ import (
 )
 
 func runDiskManagement() {
-	switch menuChoice("💽 Disk Management", []string{
+	options := []string{
 		"Disk Usage by Directory",
 		"Find Largest Files",
 		"Clean Package Cache",
@@ -31,25 +31,27 @@ func runDiskManagement() {
 		"Find Duplicate Files",
 		"Mount/Unmount Drives",
 		"Exit",
-	}) {
-	case "1":
-		diskUsageByDirectory()
-	case "2":
-		findLargestFiles()
-	case "3":
-		cleanPackageCache()
-	case "4":
-		cleanJournalLogs()
-	case "5":
-		emptyTrash()
-	case "6":
-		findDuplicateFiles()
-	case "7":
-		mountUnmountDrives()
-	case "8", "":
+	}
+	choice, ok := menuSelect("💽 Disk Management", options)
+	if !ok || choice == len(options)-1 {
 		return
-	default:
-		printError("Invalid option selected")
+	}
+
+	switch choice {
+	case 0:
+		diskUsageByDirectory()
+	case 1:
+		findLargestFiles()
+	case 2:
+		cleanPackageCache()
+	case 3:
+		cleanJournalLogs()
+	case 4:
+		emptyTrash()
+	case 5:
+		findDuplicateFiles()
+	case 6:
+		mountUnmountDrives()
 	}
 }
 
@@ -65,7 +67,7 @@ func diskUsageByDirectory() {
 	printInfo("Analyzing disk usage in: %s", targetDir)
 	fmt.Println()
 	if checkIfInstalled("du") {
-		_ = runShellCommand("du -h --max-depth=1 " + shellQuote(targetDir) + " 2>/dev/null | sort -hr | head -20")
+		runShellCommandLogged("du -h --max-depth=1 " + shellQuote(targetDir) + " 2>/dev/null | sort -hr | head -20")
 	} else {
 		printError("'du' command not found")
 	}
@@ -89,7 +91,7 @@ func findLargestFiles() {
 		command := "find " + shellQuote(searchDir) + " -type f -exec du -h {} + 2>/dev/null"
 		command += " | sort -hr | head -n " + shellQuote(numFiles)
 
-		_ = runShellCommand(command)
+		runShellCommandLogged(command)
 	} else {
 		printError("'find' command not found")
 	}
@@ -98,9 +100,9 @@ func findLargestFiles() {
 func cleanPackageCache() {
 	printSection("🧹 Clean Package Cache")
 	printSubsection("Current cache usage:")
-	_ = runShellCommand(`[ -d "/var/cache/apt/archives" ] && du -sh /var/cache/apt/archives 2>/dev/null | awk '{print "APT cache: "$1}'`)
-	_ = runShellCommand(`[ -d "/var/cache/pacman/pkg" ] && du -sh /var/cache/pacman/pkg 2>/dev/null | awk '{print "Pacman cache: "$1}'`)
-	_ = runShellCommand(`[ -d "/var/cache/dnf" ] && du -sh /var/cache/dnf 2>/dev/null | awk '{print "DNF cache: "$1}'`)
+	runShellCommandLogged(`[ -d "/var/cache/apt/archives" ] && du -sh /var/cache/apt/archives 2>/dev/null | awk '{print "APT cache: "$1}'`)
+	runShellCommandLogged(`[ -d "/var/cache/pacman/pkg" ] && du -sh /var/cache/pacman/pkg 2>/dev/null | awk '{print "Pacman cache: "$1}'`)
+	runShellCommandLogged(`[ -d "/var/cache/dnf" ] && du -sh /var/cache/dnf 2>/dev/null | awk '{print "DNF cache: "$1}'`)
 	waitForEnter()
 
 	if !confirm("Do you want to clean the package cache?") {
@@ -109,16 +111,16 @@ func cleanPackageCache() {
 	}
 
 	if isAvailableCommand(pkgmgr.AutocleanCmd) {
-		_ = runShellCommand(pkgmgr.AutocleanCmd)
+		runShellCommandLogged(pkgmgr.AutocleanCmd)
 	} else {
 		if checkIfInstalled("apt-get") {
-			_ = runShellCommand("sudo apt-get clean && sudo apt-get autoclean")
+			runShellCommandLogged("sudo apt-get clean && sudo apt-get autoclean")
 		}
 		if checkIfInstalled("pacman") {
-			_ = runShellCommand("sudo pacman -Sc --noconfirm")
+			runShellCommandLogged("sudo pacman -Sc --noconfirm")
 		}
 		if checkIfInstalled("dnf") {
-			_ = runShellCommand("sudo dnf clean all")
+			runShellCommandLogged("sudo dnf clean all")
 		}
 	}
 	printSuccess("Package cache cleaned")
@@ -131,26 +133,29 @@ func cleanJournalLogs() {
 		return
 	}
 	printSubsection("Current journal size:")
-	_ = runShellCommand("journalctl --disk-usage")
+	runShellCommandLogged("journalctl --disk-usage")
 	waitForEnter()
-	retention := menuChoice("Keep logs for how long?", []string{"2 days", "1 week", "2 weeks", "1 month", "Cancel"})
-	time := ""
-	switch retention {
-	case "1":
-		time = "2d"
-	case "2":
-		time = "1w"
-	case "3":
-		time = "2w"
-	case "4":
-		time = "1M"
-	default:
+	options := []string{"2 days", "1 week", "2 weeks", "1 month", "Cancel"}
+	choice, ok := menuSelect("Keep logs for how long?", options)
+	if !ok || choice == len(options)-1 {
 		printWarning("Cancelled")
 		return
 	}
 
+	time := ""
+	switch choice {
+	case 0:
+		time = "2d"
+	case 1:
+		time = "1w"
+	case 2:
+		time = "2w"
+	case 3:
+		time = "1M"
+	}
+
 	printInfo("Cleaning logs older than %s", time)
-	_ = runShellCommand("sudo journalctl --vacuum-time=" + shellQuote(time))
+	runShellCommandLogged("sudo journalctl --vacuum-time=" + shellQuote(time))
 	printSuccess("Journal logs cleaned")
 }
 
@@ -161,7 +166,11 @@ func emptyTrash() {
 	for _, trashDir := range trashDirs {
 		if stat, err := os.Stat(trashDir); err == nil && stat.IsDir() {
 			totalFound = true
-			size := commandOutput("du -sh " + shellQuote(trashDir) + " 2>/dev/null | cut -f1")
+			size, err := commandOutput("du -sh " + shellQuote(trashDir) + " 2>/dev/null | cut -f1")
+			if err != nil {
+				printWarning("Unable to read trash size for %s: %v", trashDir, err)
+				size = "unknown"
+			}
 			printInfo("Trash location: %s (%s)", trashDir, size)
 		}
 	}
@@ -177,7 +186,7 @@ func emptyTrash() {
 	for _, trashDir := range trashDirs {
 		if stat, err := os.Stat(trashDir); err == nil && stat.IsDir() {
 			printInfo("Emptying: %s", trashDir)
-			_ = runShellCommand("find " + shellQuote(trashDir) + " -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +")
+			runShellCommandLogged("find " + shellQuote(trashDir) + " -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +")
 		}
 	}
 	printSuccess("Trash emptied")
@@ -199,38 +208,43 @@ func findDuplicateFiles() {
 	printInfo("Searching for duplicate files in: %s", searchDir)
 	printWarning("This may take a while")
 	fmt.Println()
-	_ = runCommandLine("fdupes", "-r", searchDir)
+	runCommandLineLogged("fdupes", "-r", searchDir)
 }
 
 func mountUnmountDrives() {
 	printSection("💾 Mount/Unmount Drives")
-	switch menuChoice("Choose an action", []string{"List Mounted Drives", "Mount a Drive", "Unmount a Drive", "Cancel"}) {
-	case "1":
-		listMountedDrives()
-	case "2":
-		mountDrive()
-	case "3":
-		unmountDrive()
-	default:
+	options := []string{"List Mounted Drives", "Mount a Drive", "Unmount a Drive", "Cancel"}
+	choice, ok := menuSelect("Choose an action", options)
+	if !ok || choice == len(options)-1 {
 		printWarning("Cancelled")
+		return
+	}
+
+	switch choice {
+	case 0:
+		listMountedDrives()
+	case 1:
+		mountDrive()
+	case 2:
+		unmountDrive()
 	}
 }
 
 func listMountedDrives() {
 	printSubsection("Currently Mounted Drives:")
 	if checkIfInstalled("lsblk") {
-		_ = runShellCommand("lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE")
+		runShellCommandLogged("lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE")
 	} else {
-		_ = runShellCommand("mount | column -t")
+		runShellCommandLogged("mount | column -t")
 	}
 }
 
 func mountDrive() {
 	printSubsection("Available Block Devices:")
 	if checkIfInstalled("lsblk") {
-		_ = runShellCommand("lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE")
+		runShellCommandLogged("lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE")
 	} else {
-		_ = runShellCommand("fdisk -l 2>/dev/null | grep -E '^/dev/'")
+		runShellCommandLogged("fdisk -l 2>/dev/null | grep -E '^/dev/'")
 	}
 	waitForEnter()
 	device := promptLine("Enter device to mount (e.g., /dev/sdb1):")
@@ -245,7 +259,7 @@ func mountDrive() {
 	}
 	if stat, err := os.Stat(mountPoint); err != nil || !stat.IsDir() {
 		printInfo("Creating mount point: %s", mountPoint)
-		_ = runCommandLine("sudo", "mkdir", "-p", filepath.Clean(mountPoint))
+		runCommandLineLogged("sudo", "mkdir", "-p", filepath.Clean(mountPoint))
 	}
 
 	printInfo("Mounting %s to %s", device, mountPoint)

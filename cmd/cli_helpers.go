@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -142,10 +143,6 @@ func printInfo(message string, args ...any) {
 	fmt.Println(outputInfoStyle.Render("• " + fmt.Sprintf(message, args...)))
 }
 
-func printCommandHeader(title string) {
-	printSection(title)
-}
-
 func renderOutputTitle(title string) string {
 	icon, text, ok := strings.Cut(strings.TrimSpace(title), " ")
 	if !ok {
@@ -198,6 +195,27 @@ func menuChoice(title string, items []string) string {
 	return value
 }
 
+func menuSelect(title string, items []string) (int, bool) {
+	value := menuChoice(title, items)
+	if value == "" {
+		return -1, false
+	}
+
+	selected, err := parseInt(value)
+	if err != nil {
+		printError("Invalid option selected")
+		return -1, false
+	}
+
+	index := selected - 1
+	if index < 0 || index >= len(items) {
+		printError("Invalid option selected")
+		return -1, false
+	}
+
+	return index, true
+}
+
 func buildChoiceOptions(items []string) []ui.Option {
 	options := make([]ui.Option, 0, len(items))
 	for i, item := range items {
@@ -248,12 +266,20 @@ func runCommandLine(name string, args ...string) int {
 	return exitCodeFromError(cmd.Run())
 }
 
-func commandOutput(command string) string {
+func runCommandLineLogged(name string, args ...string) int {
+	rc := runCommandLine(name, args...)
+	if rc != 0 {
+		printWarning("%s failed with exit code %d", name, rc)
+	}
+	return rc
+}
+
+func commandOutput(command string) (string, error) {
 	out, err := exec.Command("sh", "-c", command).Output()
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return strings.TrimSpace(string(out))
+	return strings.TrimSpace(string(out)), nil
 }
 
 func firstExistingCommand(commands ...string) string {
@@ -274,35 +300,36 @@ func homePath(parts ...string) string {
 	return filepath.Join(all...)
 }
 
-func parseInt(value string) int {
+func parseInt(value string) (int, error) {
 	parsed, err := strconv.Atoi(strings.TrimSpace(value))
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return parsed
+	return parsed, nil
 }
 
-func parseFloat(value string) float64 {
+func parseFloat(value string) (float64, error) {
 	parsed, err := strconv.ParseFloat(strings.Trim(strings.TrimSpace(value), ","), 64)
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return parsed
+	return parsed, nil
 }
 
-func runDevDistribute() {
+func runDevDistribute() int {
 	source, err := os.Executable()
 	if err != nil {
-		fmt.Printf("%srobohelp distribution failed: %v%s\n", colorRed, err, colorNC)
-		os.Exit(1)
+		printError("robohelp distribution failed: %v", err)
+		return 1
 	}
 
 	if rc := runCommandLine("sudo", "cp", source, "/usr/local/bin/robohelp"); rc != 0 {
-		fmt.Printf("%srobohelp distribution failed.%s\n", colorRed, colorNC)
-		os.Exit(rc)
+		printError("robohelp distribution failed")
+		return rc
 	}
 
-	fmt.Printf("%srobohelp distributed%s\n", colorGreen, colorNC)
+	printSuccess("robohelp distributed")
+	return 0
 }
 
 func printCLIError(message string) {
@@ -311,13 +338,12 @@ func printCLIError(message string) {
 	fmt.Printf("%s%s%s\n", colorRed, message, colorNC)
 }
 
-func requireRootOrExit() {
+func requireRoot() error {
 	if err := ensureSudoCredentials(); err == nil {
-		return
+		return nil
 	}
 
-	printCLIError("❌ This feature must be run as root or with sudo rights.")
-	os.Exit(1)
+	return errors.New("❌ This feature must be run as root or with sudo rights.")
 }
 
 func ensureSudoCredentials() error {
