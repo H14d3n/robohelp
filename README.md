@@ -20,7 +20,6 @@
 - 🎨 Cool ASCII banner and BB-8 art on start
 - 🖥️ Detects your Linux distro
 - 📚 Easy to use with help command and interactive menus
-- 🔄 **Auto-Update:** Automatically checks and updates itself from GitHub
 - ⚡ **AFM (Ansible Fast Management):** Integrated menu for running Ansible playbooks, pinging hosts, viewing inventory, and checking logs
 - 🔁 **SSH Management:** Save SSH connections, distribute keys, and configure settings
 - ⚙️ **Service Management:** Start, stop, restart, enable/disable system services
@@ -28,10 +27,6 @@
 - 🌐 **Network Diagnostics:** DNS lookup, traceroute, ping, bandwidth monitoring, firewall status
 - 💾 **Disk Management:** Find large files, clean caches, manage mounts, find duplicates
 - 🔧 **Troubleshooting Wizard:** Guided diagnostics for boot, network, CPU, disk, and service issues
-
-
-
-
 
 ## 📖 Usage
 
@@ -123,15 +118,23 @@ Maybe adding more distributions later!
 
 ---
 
-## 🚀 Installation
+## 🚀 Build from Source
 
-### One-Time Installation
+### Build & Install (Recommended)
 
-RoboHelp only needs to be installed once. After installation, it will automatically check for and install updates from GitHub each time you run it.
+RoboHelp is a single binary. Build it once and install it system-wide.
 
-1. Clone or copy the `robohelp.sh` script to your system:
+**Prerequisite:** Go 1.25+
 
 ```bash
-sudo cp robohelp.sh /usr/local/bin/robohelp
-sudo chmod +x /usr/local/bin/robohelp
+git clone https://github.com/h14d3n/robohelp.git
+cd robohelp
+go build -o robohelp .
+sudo install -m 0755 robohelp /usr/local/bin/robohelp
+```
+
+### Run Without Installing
+
+```bash
+go run .
 ```
