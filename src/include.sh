@@ -43,7 +43,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
   ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠙⠛⠛⠛⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀'
 
 # Variable Declaration
-VERSION="2.0.0"
+VERSION="4.0.0"
 GITHUB_REPO="h14d3n/robohelp"
 GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
 INSTALL_PATH="/usr/local/bin/robohelp"
@@ -63,11 +63,11 @@ check_security_cmd=""
 dialog_install_asked=0
 
 # Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
+RED='\033[1;31m'
+GREEN='\033[0;38;5;41m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
-CYAN='\033[0;36m'
+CYAN='\033[38;5;080m'
 INVERT='\033[7m'
 NC='\033[0m' # No Color - Always put in the end of every message
 

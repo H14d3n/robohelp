@@ -5,7 +5,6 @@ ansible_deploy() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo
