@@ -47,7 +47,7 @@ temp_file_exists() {
 
 collect_scripts() {
 	for file in "${filenames[@]}"; do
-		sleep 0.1
+		sleep 0.05
 		if cat "$file" | tee -a "$tempfile" > /dev/null; then
 			echo -e "${GREEN}$file distributed${NC}"
 		else
@@ -63,7 +63,7 @@ main() {
 			temp_file_exists
 			echo
 			echo -e "${CYAN}Collecting Scripts${NC}"
-			sleep 1
+			sleep 0.5
 			collect_scripts
 			chmod +x "$tempfile"
 			;;

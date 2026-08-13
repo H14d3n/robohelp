@@ -3,7 +3,6 @@ package_management() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${CYAN}📦 Package Management${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo
@@ -142,7 +141,6 @@ package_management() {
 # Package Management Functions
 package_update() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Updating package metadata...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $update_cmd
@@ -158,7 +156,6 @@ package_update() {
 
 package_upgrade() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $upgrade_cmd
@@ -174,7 +171,6 @@ package_upgrade() {
 
 dist_upgrade() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Upgrading distribution and dependencies...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
@@ -198,7 +194,6 @@ dist_upgrade() {
 
 package_autorm() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}👁  Are you sure?${NC}"
     echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -228,7 +223,6 @@ package_autorm() {
 
 package_autocls() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $autoclean_cmd
@@ -245,7 +239,6 @@ package_autocls() {
 package_install() {
     local package="$1"
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Installing package: ${YELLOW}$package${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $install_cmd "$package"
@@ -261,7 +254,6 @@ package_install() {
 package_remove() {
     local package="$1"
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Removing package: ${YELLOW}$package${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $remove_cmd "$package"
@@ -277,7 +269,6 @@ package_remove() {
 package_purge() {
     local package="$1"
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}📦 Purging package: ${YELLOW}$package${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $purge_cmd "$package"
@@ -293,7 +284,6 @@ package_purge() {
 package_search() {
     local term="$1"
     echo
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BLUE}🔍 Searching for: ${YELLOW}$term${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     $search_cmd "$term"
@@ -302,14 +292,12 @@ package_search() {
 
 full_upgrade() {
     echo
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     package_update && \
     package_upgrade && \
     package_autorm && \
     package_autocls && \
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" && \
     echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" && \
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" || \
     echo -e "${RED}❌ An error occurred during the upgrade. Exit code: $? ${NC}"

@@ -9,7 +9,6 @@ ssh_config() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo
