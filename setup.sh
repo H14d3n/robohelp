@@ -12,13 +12,27 @@ INVERT='\033[7m'
 NC='\033[0m' # No Color - Always put in the end of every message
 
 # Filenames specified in Order, so assembled is more readable
-filenames=("robohelp.sh")
+src_dir="src"
+filenames=(
+	"$src_dir/include.sh"
+	"$src_dir/helpers.sh"
+	"$src_dir/package_management.sh"
+	"$src_dir/service_management.sh"
+	"$src_dir/ssh_config.sh"
+	"$src_dir/health_check.sh"
+	"$src_dir/network_diagnostics.sh"
+	"$src_dir/disk_management.sh"
+	"$src_dir/troubleshooting_wizard.sh"
+	"$src_dir/ansible_deploy.sh"
+	"$src_dir/main.sh"
+)
 temppath="/tmp/robohelp"
 tempfile="$temppath/robohelp.sh"
 
 temp_file_exists() {
 	if [ -e "$tempfile" ]; then
 		echo -e "${GREEN}Temp folder and file exist${NC}"
+		> "$tempfile"
 		return 0
 	else
 		echo -e "${CYAN}Creating...${NC}"
@@ -33,7 +47,7 @@ temp_file_exists() {
 
 collect_scripts() {
 	for file in "${filenames[@]}"; do
-		sleep 0.2
+		sleep 0.1
 		if cat "$file" | tee -a "$tempfile" > /dev/null; then
 			echo -e "${GREEN}$file distributed${NC}"
 		else
@@ -51,6 +65,7 @@ main() {
 			echo -e "${CYAN}Collecting Scripts${NC}"
 			sleep 1
 			collect_scripts
+			chmod +x "$tempfile"
 			;;
 	esac
 }
