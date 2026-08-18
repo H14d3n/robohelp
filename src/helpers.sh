@@ -5,6 +5,21 @@ show_banner() {
     echo -e "${CYAN}Version: $VERSION${NC}"
 }
 
+write_header() {
+    local text="$1"
+    local color="${2:-$CYAN}" # Default to cyan if no color is provided
+    echo -e "${color}${text}${NC}"
+    echo -e "${color}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+write_subheader() {
+    local text="$1"
+    local color="${2:-$CYAN}" # Default to cyan if no color is provided
+    local line="${3:-─────────────────────────────────────────────}"
+    echo -e "${color}${text}${NC}"
+    echo -e "${color}<${line}>${NC}"
+}
+
 # Function to get remote version from GitHub
 get_remote_version() {
     if command -v curl &>/dev/null; then

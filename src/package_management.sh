@@ -3,8 +3,7 @@ package_management() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}📦 Package Management${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📦 Package Management"
         echo
         echo -e "${YELLOW}  [1] Update Package Repositories${NC}"
         echo -e "${YELLOW}  [2] Upgrade Installed Packages${NC}"
@@ -141,8 +140,7 @@ package_management() {
 # Package Management Functions
 package_update() {
     echo
-    echo -e "${CYAN}📦 Updating package metadata...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Updating package metadata..."
     $update_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -156,8 +154,7 @@ package_update() {
 
 package_upgrade() {
     echo
-    echo -e "${CYAN}📦 Upgrading installed packages...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Upgrading installed packages..."
     $upgrade_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -171,8 +168,7 @@ package_upgrade() {
 
 dist_upgrade() {
     echo
-    echo -e "${CYAN}📦 Upgrading distribution and dependencies...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Upgrading distribution and dependencies..."
 
     if [ "$dist_upgrade_cmd" = "unknown" ]; then
 	    echo -e "${BLUE}🛑 This command is not available for your distribution${NC}"
@@ -195,8 +191,7 @@ dist_upgrade() {
 package_autorm() {
     echo
     echo -e "${CYAN}👁  Are you sure?${NC}"
-    echo -e "${CYAN}🧹 Removing unnecessary packages...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "🧹 Removing unnecessary packages..."
     if [[ "$distro" == "arch" || "$distro" == "manjarolinux" ]]; then
         # Compute orphans at runtime to avoid command-substitution at assignment time
         orphans=$(pacman -Qdtq)
@@ -223,8 +218,7 @@ package_autorm() {
 
 package_autocls() {
     echo
-    echo -e "${CYAN}🧼 Cleaning up local repository...${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "🧼 Cleaning up local repository..."
     $autoclean_cmd
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -239,8 +233,7 @@ package_autocls() {
 package_install() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Installing package: ${YELLOW}$package${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Installing package: ${YELLOW}$package${NC}"
     $install_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -254,8 +247,7 @@ package_install() {
 package_remove() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Removing package: ${YELLOW}$package${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Removing package: ${YELLOW}$package${NC}"
     $remove_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -269,8 +261,7 @@ package_remove() {
 package_purge() {
     local package="$1"
     echo
-    echo -e "${CYAN}📦 Purging package: ${YELLOW}$package${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "📦 Purging package: ${YELLOW}$package${NC}"
     $purge_cmd "$package"
     rc=$?
     if [ $rc -eq 0 ]; then
@@ -284,22 +275,20 @@ package_purge() {
 package_search() {
     local term="$1"
     echo
-    echo -e "${BLUE}🔍 Searching for: ${YELLOW}$term${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "🔍 Searching for: ${YELLOW}$term${NC}" "$BLUE"
     $search_cmd "$term"
     echo
 }
 
 full_upgrade() {
     echo
-    echo -e "${CYAN}⚙  Running full upgrade...!${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "⚙  Running full upgrade...!"
     package_update && \
     package_upgrade && \
     package_autorm && \
     package_autocls && \
     echo -e "${GREEN}✅ Full upgrade completed successfully!${NC}" && \
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" || \
+    write_header "" "$GREEN" || \
     echo -e "${RED}❌ An error occurred during the upgrade. Exit code: $? ${NC}"
     echo
 }

@@ -2,8 +2,7 @@ disk_management() {
 
     if ! check_dialog; then
         echo
-        echo -e "${CYAN}💾 Welcome to Disk Management${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "💾 Welcome to Disk Management"
         echo
         echo -e "${YELLOW}  [1] Disk Usage by Directory${NC}"
         echo -e "${YELLOW}  [2] Find Largest Files${NC}"
@@ -35,8 +34,7 @@ disk_management() {
 
     disk_usage_by_directory() {
         echo
-        echo -e "${CYAN}📊 Disk Usage by Directory${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📊 Disk Usage by Directory"
         echo
         
         if command -v dialog &>/dev/null; then
@@ -71,8 +69,7 @@ disk_management() {
 
     find_largest_files() {
         echo
-        echo -e "${CYAN}📁 Find Largest Files${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📁 Find Largest Files"
         echo
         
         if command -v dialog &>/dev/null; then
@@ -120,8 +117,7 @@ disk_management() {
 
     clean_package_cache() {
         echo
-        echo -e "${CYAN}🧹 Clean Package Cache${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🧹 Clean Package Cache"
         echo
         
         echo -e "${YELLOW}Current cache usage:${NC}"
@@ -171,8 +167,7 @@ disk_management() {
 
     clean_journal_logs() {
         echo
-        echo -e "${CYAN}📝 Clean Journal Logs${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📝 Clean Journal Logs"
         echo
         
         if command -v journalctl &>/dev/null; then
@@ -222,8 +217,7 @@ disk_management() {
 
     empty_trash() {
         echo
-        echo -e "${CYAN}🗑️  Empty Trash${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🗑️  Empty Trash"
         echo
         
         trash_dirs=(
@@ -269,8 +263,7 @@ disk_management() {
 
     find_duplicate_files() {
         echo
-        echo -e "${CYAN}🔍 Find Duplicate Files${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔍 Find Duplicate Files"
         echo
         
         if ! command -v fdupes &>/dev/null; then
@@ -309,8 +302,7 @@ disk_management() {
 
     mount_unmount_drives() {
         echo
-        echo -e "${CYAN}💾 Mount/Unmount Drives${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "💾 Mount/Unmount Drives"
         echo
         
         if command -v dialog &>/dev/null; then

@@ -5,8 +5,7 @@ ansible_deploy() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN} Welcome to the AFM - Ansible Fast Management${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header " Welcome to the AFM - Ansible Fast Management"
         echo
         echo -e "${YELLOW}  [1] Run Playbook (with Flags)${NC}"
         echo -e "${YELLOW}  [2] Test Connection (Ping Hosts)${NC}"

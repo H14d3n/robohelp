@@ -9,8 +9,7 @@ service_management() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}⚙️  Service Management${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "⚙️  Service Management"
         echo
         echo -e "${YELLOW}  [1] List All Services${NC}"
         echo -e "${YELLOW}  [2] List Running Services${NC}"
@@ -40,24 +39,21 @@ service_management() {
     case "${svc_option}" in
         1)
             echo
-            echo -e "${CYAN}📋 All Services${NC}"
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            write_header "📋 All Services"
             echo
             $service_list_cmd --all --no-pager
             echo
             ;;
         2)
             echo
-            echo -e "${CYAN}▶️  Running Services${NC}"
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            write_header "▶️  Running Services"
             echo
             $service_list_cmd --state=running --no-pager
             echo
             ;;
         3)
             echo
-            echo -e "${CYAN}❌ Failed Services${NC}"
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            write_header "❌ Failed Services"
             echo
             $service_list_cmd --state=failed --no-pager
             echo
@@ -202,8 +198,7 @@ service_management() {
             [ -z "$service_name" ] && return 0
             
             echo
-            echo -e "${CYAN}📊 Status: $service_name${NC}"
-            echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            write_header "📊 Status: $service_name"
             echo
             $service_status_cmd "$service_name" --no-pager
             echo

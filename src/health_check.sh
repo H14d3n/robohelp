@@ -1,8 +1,7 @@
 # System Health Check
 health_check() {
     echo
-    echo -e "${CYAN}🏥 System Health Check${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header "🏥 System Health Check"
     echo
 
     # Check Disk Space
@@ -134,7 +133,7 @@ health_check() {
     echo
 
     echo -e "${GREEN}✅ Health check completed${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    write_header ""
     echo
 }
 
