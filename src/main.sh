@@ -2,8 +2,7 @@ show_main_menu() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}🏠 RoboHelp Main Menu${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🏠 RoboHelp Main Menu"
         echo
         echo -e "${YELLOW}  [1] 📦 Package Management${NC}"
         echo -e "${YELLOW}  [2] ⚙️ Service Management${NC}"

@@ -4,8 +4,7 @@ troubleshooting_wizard() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN}🔧 Troubleshooting Wizard${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 Troubleshooting Wizard"
         echo
         echo -e "${YELLOW}Select the problem you're experiencing:${NC}"
         echo
@@ -36,8 +35,7 @@ troubleshooting_wizard() {
 
     troubleshoot_boot() {
         echo
-        echo -e "${CYAN}🔧 System Boot Troubleshooting${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 System Boot Troubleshooting"
         echo
         echo -e "${YELLOW}Step 1: Checking system boot logs...${NC}"
         echo
@@ -98,8 +96,7 @@ troubleshooting_wizard() {
 
     troubleshoot_network() {
         echo
-        echo -e "${CYAN}🔧 Network Troubleshooting${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 Network Troubleshooting"
         echo
         echo -e "${YELLOW}Running comprehensive network diagnostics...${NC}"
         echo
@@ -115,7 +112,7 @@ troubleshooting_wizard() {
             $service_list_cmd --all --no-pager | grep -E "(network|NetworkManager|networking|dhcp|resolved)" | head -n 10 || echo "No network services found"
         fi
         echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header ""
         echo
         echo -e "${CYAN}• Restart network service:${NC}"
         if command -v "$service_manager" &>/dev/null; then
@@ -157,8 +154,7 @@ troubleshooting_wizard() {
 
     troubleshoot_cpu() {
         echo
-        echo -e "${CYAN}🔧 High CPU Usage Troubleshooting${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 High CPU Usage Troubleshooting"
         echo
         echo -e "${YELLOW}Step 1: Identifying high CPU processes...${NC}"
         echo
@@ -274,8 +270,7 @@ troubleshooting_wizard() {
 
     troubleshoot_disk() {
         echo
-        echo -e "${CYAN}🔧 Disk Space Troubleshooting${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 Disk Space Troubleshooting"
         echo
         echo -e "${YELLOW}Step 1: Analyzing disk usage...${NC}"
         echo
@@ -354,13 +349,11 @@ troubleshooting_wizard() {
         fi
         
         echo
-        echo -e "${CYAN}📋 Running Services${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📋 Running Services"
         echo
         $service_list_cmd --state=running --no-pager | head -n 20
         echo
-        echo -e "${CYAN}❌ Failed Services${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "❌ Failed Services"
         echo
         $service_list_cmd --state=failed --no-pager
         echo
@@ -388,8 +381,7 @@ troubleshooting_wizard() {
         fi
         
         echo
-        echo -e "${CYAN}🔧 Troubleshooting: $service_name${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 Troubleshooting: $service_name"
         echo
         
         echo -e "${YELLOW}Step 1: Checking service status...${NC}"
@@ -456,8 +448,7 @@ troubleshooting_wizard() {
 
     troubleshoot_ssh() {
         echo
-        echo -e "${CYAN}🔧 SSH Connection Troubleshooting${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔧 SSH Connection Troubleshooting"
         echo
         
         if ! command -v sshd &>/dev/null && ! command -v ssh &>/dev/null; then
@@ -471,7 +462,7 @@ troubleshooting_wizard() {
         echo
         $service_list_cmd --all --no-pager | grep -E "(ssh|sshd)" || echo "No SSH services found"
         echo
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header ""
         echo
         
         echo -e "${YELLOW}Step 1: Checking SSH service status...${NC}"

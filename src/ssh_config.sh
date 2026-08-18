@@ -9,8 +9,7 @@ ssh_config() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN} 🔐 Setting up SSH configuration...${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header " 🔐 Setting up SSH configuration..."
         echo
         echo -e "${YELLOW}  [1] Establish SSH connection${NC}"
         echo -e "${YELLOW}  [2] Generate SSH Key Pair${NC}"
@@ -42,8 +41,7 @@ ssh_config() {
                     --yesno "Do you want to use a previously used command?" 7 50
                 use_previous=$?
             else
-                echo -e "${CYAN} Do you want to use a previously used Command?${NC}"
-                echo -e "${CYAN}<─────────────────────────────────────────────>${NC}"
+                write_subheader " Do you want to use a previously used Command?"
                 echo -e "${YELLOW}> [1] Yes${NC}"
                 echo -e "${YELLOW}> [2] No${NC}"
                 echo
@@ -88,8 +86,7 @@ ssh_config() {
                             [ $dialog_exit -ne 0 ] && return 0
                         else
                             # Print header BEFORE the list
-                            echo -e "${CYAN} Available SSH commands:${NC}"
-                            echo -e "${CYAN}<──────────────────────>${NC}"
+                            write_subheader " Available SSH commands:" "$CYAN" "──────────────────────"
                             echo
                             
                             # Now print the list
@@ -99,8 +96,7 @@ ssh_config() {
                                 printf '[%d] ssh %s\n\n' "$loop" "$command"
                             done
                             
-                            echo -e "${CYAN} Which SSH command would you like to use? [e.g. 0]${NC}"
-                            echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                            write_subheader " Which SSH command would you like to use? [e.g. 0]"
                             read -r selected_index
                             echo
                         fi
@@ -130,8 +126,7 @@ ssh_config() {
                 [ $dialog_exit -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
-                echo -e "${CYAN} Enter username, host and port (e.g. user host 22)${NC}"
-                echo -e "${CYAN}<─────────────────────────────────────────────────>${NC}"
+                write_subheader " Enter username, host and port (e.g. user host 22)"
                 echo
                 read -r "ssh_user" "ssh_host" "ssh_port"
             fi
@@ -147,8 +142,7 @@ ssh_config() {
             return 0
             ;;
         2)
-            echo -e "${CYAN} ⚙️  Generating SSH Key Pair...${NC}"
-            echo -e "${CYAN}<───────────────────────────────>${NC}"
+            write_subheader " ⚙️  Generating SSH Key Pair..." "$CYAN" "───────────────────────────────"
             if [ -f ~/.ssh/id_rsa ]; then
                 echo
                 echo -e "${YELLOW}⚠️  SSH key already exists at ~/.ssh/id_rsa. Showing public key:${NC}"
@@ -171,8 +165,7 @@ ssh_config() {
                 [ $dialog_exit -ne 0 ] && return 0
                 read -r ssh_user ssh_host ssh_port <<< "$ssh_input"
             else
-                echo -e "${CYAN} Enter username, host and port to copy key to (e.g. user host 22):${NC}"
-                echo -e "${CYAN}<─────────────────────────────────────────────────────────────────>${NC}"
+                write_subheader " Enter username, host and port to copy key to (e.g. user host 22):" "$CYAN" "─────────────────────────────────────────────────────────────────"
                 echo
                 read -r ssh_user ssh_host ssh_port
             fi

@@ -3,8 +3,7 @@ network_diagnostics() {
     if ! check_dialog; then
         # Fallback to old menu
         echo
-        echo -e "${CYAN} Welcome to Network Diagnostics${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "Welcome to Network Diagnostics"
         echo
         echo -e "${YELLOW}  [1] DNS Lookup${NC}"
         echo -e "${YELLOW}  [2] Traceroute/Ping utilities${NC}"
@@ -33,8 +32,7 @@ network_diagnostics() {
 
     dns_lookup() {
         echo
-        echo -e "${CYAN}🔍 DNS Lookup${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔍 DNS Lookup"
         echo
         
         if command -v dialog &>/dev/null; then
@@ -70,8 +68,7 @@ network_diagnostics() {
 
     traceroute_ping() {
         echo
-        echo -e "${CYAN}🛰️  Traceroute/Ping Utilities${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🛰️  Traceroute/Ping Utilities"
         echo
         
         if command -v dialog &>/dev/null; then
@@ -132,8 +129,7 @@ network_diagnostics() {
 
     network_info() {
         echo
-        echo -e "${CYAN}🌐 Network Interface Information${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🌐 Network Interface Information"
         echo
         
         if command -v ip &>/dev/null; then
@@ -156,8 +152,7 @@ network_diagnostics() {
 
     bandwidth_monitor() {
         echo
-        echo -e "${CYAN}📊 Bandwidth Monitoring${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "📊 Bandwidth Monitoring"
         echo
         
         if command -v iftop &>/dev/null; then
@@ -187,8 +182,7 @@ network_diagnostics() {
 
     firewall_status() {
         echo
-        echo -e "${CYAN}🔥 Firewall Status${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔥 Firewall Status"
         echo
         
         if command -v ufw &>/dev/null; then
@@ -217,8 +211,7 @@ network_diagnostics() {
 
     active_connections() {
         echo
-        echo -e "${CYAN}🔌 Active Network Connections${NC}"
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        write_header "🔌 Active Network Connections"
         echo
         
         if command -v ss &>/dev/null; then
