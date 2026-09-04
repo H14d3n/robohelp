@@ -46,7 +46,7 @@ check_and_update() {
     
     # If we couldn't fetch the remote version, skip silently
     if [ -z "$remote_version" ]; then
-        echo -e "${YELLOW}⚠️ Could not check for updates (no connection to GitHub)${NC}"
+        echo -e "${YELLOW}⚠️  Could not check for updates (no connection to GitHub)${NC}"
         echo
         return 0
     fi
@@ -269,7 +269,7 @@ check_installed() {
 
 # Dev Automation
 mv_robohelp() {
-    if sudo cp ./robohelp.sh /usr/local/bin/robohelp; then
+    if sudo install -m 0755 /tmp/robohelp/robohelp.sh /usr/local/bin/robohelp; then
       echo -e "${GREEN}👽 robohelp distributed${NC}"
     else
       echo -e "${RED}👹 robohelp distribution failed.${NC}"
