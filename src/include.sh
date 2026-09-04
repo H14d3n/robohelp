@@ -45,7 +45,7 @@ bb8='⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 # Variable Declaration
 VERSION="4.0.0"
 GITHUB_REPO="h14d3n/robohelp"
-GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/robohelp.sh"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/src/include.sh"
 INSTALL_PATH="/usr/local/bin/robohelp"
 timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
