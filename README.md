@@ -84,19 +84,19 @@ robohelp --ansible
 
 ## 🏥 System Tools
 
-**Health Check**
+### Health Check
 Monitor your system's health including disk space, CPU load, broken packages, and available security updates.
 
-**Network Diagnostics**
+### Network Diagnostics
 Tools for DNS lookups, traceroute/ping, network interface information, bandwidth monitoring, firewall status, and viewing active connections.
 
-**Disk Management**
+### Disk Management
 Find large files, analyze disk usage by directory, clean package caches, manage journal logs, empty trash, find duplicate files, and mount/unmount drives.
 
-**Troubleshooting Wizard**
+### Troubleshooting Wizard
 Guided diagnostics for common issues including boot problems, network connectivity, high CPU usage, disk issues, service failures, and SSH connection problems.
 
-**Service Management**
+### Service Management
 Manage system services: list, start, stop, restart, enable, disable, and check status of services.
 
 ---
@@ -120,18 +120,26 @@ Maybe adding more distributions later!
 
 ## 🚀 Build from Source
 
-RoboHelp is assembled from modular scripts in [src/](src/) into a single executable using [setup.sh](setup.sh).
-
 ### Build & Install (Recommended)
+
+RoboHelp is a single binary. Build it once and install it system-wide.
+
+**Prerequisite:** Go 1.25+
 
 ```bash
 git clone https://github.com/h14d3n/robohelp.git
 cd robohelp
-./setup.sh
-/tmp/robohelp/robohelp.sh -dx
+go build -o robohelp .
+sudo install -m 0755 robohelp /usr/local/bin/robohelp
 ```
 
 ### Run Without Installing
+
+```bash
+go run .
+```
+
+### Assemble Modular Bash Version
 
 ```bash
 ./setup.sh
