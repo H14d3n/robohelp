@@ -1,0 +1,70 @@
+services:
+  debian:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: debian:stable-slim
+
+  ubuntu:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: ubuntu:latest
+
+  kali:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: kalilinux/kali-rolling:latest
+
+  fedora:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: fedora:latest
+
+  centos:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: quay.io/centos/centos:stream9
+
+  rhel:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: registry.access.redhat.com/ubi9/ubi:latest
+
+  arch:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: archlinux:latest
+
+  manjaro:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: manjarolinux/base:latest
+
+  opensuse:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: opensuse/leap:latest
+
+  sles:
+    build:
+      context: ../../..
+      dockerfile: .github/workflows/testing/Dockerfile
+      args:
+        BASE_IMAGE: registry.suse.com/bci/bci-base:latest
