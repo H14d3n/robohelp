@@ -114,7 +114,11 @@ main() {
             mv_robohelp
             ;;
         -ssh|--ssh-settings)
-            ssh_config
+            if [ -n "$2" ]; then
+                ssh_connect_by_search "$2"
+            else
+                ssh_config
+            fi
             ;;
         -pi|--p-install|-prm|--p-remove|-pp|--p-purge|-ps|--p-search)
             action="$1"
@@ -184,7 +188,7 @@ main() {
 	        echo "  	-pp,	--p-purge <name>		Purge package(s) with dependencies"
 	        echo
 	        echo -e "${CYAN}⚙️ System Tools ${NC}"
-	        echo "  	-ssh,	--ssh-settings			SSH configuration menu"
+	        echo "  	-ssh,	--ssh-settings	[search]	SSH configuration menu, or reconnect to a previously used host matching [search]"
 	        echo "  	-hc,	--health-check			Run system health check"
 	        echo "  	-nd,	--network-diag			Network diagnostics menu"
 	        echo "  	-dm,	--disk-management		Disk management menu"

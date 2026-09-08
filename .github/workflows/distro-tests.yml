@@ -1,0 +1,50 @@
+name: Distro Compatibility Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian
+            base_image: debian:stable-slim
+          - distro: ubuntu
+            base_image: ubuntu:latest
+          - distro: kali
+            base_image: kalilinux/kali-rolling:latest
+          - distro: fedora
+            base_image: fedora:latest
+          - distro: centos
+            base_image: quay.io/centos/centos:stream9
+          - distro: rhel
+            base_image: registry.access.redhat.com/ubi9/ubi:latest
+          - distro: arch
+            base_image: archlinux:latest
+          - distro: manjaro
+            base_image: manjarolinux/base:latest
+          - distro: opensuse
+            base_image: opensuse/leap:latest
+          - distro: sles
+            base_image: registry.suse.com/bci/bci-base:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.distro }} image
+        run: |
+          docker build \
+            --build-arg BASE_IMAGE=${{ matrix.base_image }} \
+            -f .github/workflows/testing/Dockerfile \
+            -t robohelp-test:${{ matrix.distro }} .
+
+      - name: Run robohelp on ${{ matrix.distro }}
+        run: docker run --rm robohelp-test:${{ matrix.distro }} -h
