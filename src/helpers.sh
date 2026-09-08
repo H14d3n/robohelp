@@ -169,7 +169,7 @@ det_release() {
 	    service_enable_cmd="sudo systemctl enable"
 	    service_disable_cmd="sudo systemctl disable"
 	    ;;
-	arch|manjarolinux)
+	arch|manjaro|manjarolinux)
         update_cmd="sudo pacman -Sy"
         upgrade_cmd="sudo pacman -Syu"
         dist_upgrade_cmd="unknown" # Manual upgrade for major versions
