@@ -21,7 +21,7 @@
 - 🖥️ Detects your Linux distro
 - 📚 Easy to use with help command and interactive menus
 - ⚡ **AFM (Ansible Fast Management):** Integrated menu for running Ansible playbooks, pinging hosts, viewing inventory, and checking logs
-- 🔁 **SSH Management:** Save SSH connections, distribute keys, and configure settings
+- 🔁 **SSH Management:** Save SSH connections, distribute keys, configure settings, and reconnect instantly by searching past hosts (`-ssh <search>`)
 - ⚙️ **Service Management:** Start, stop, restart, enable/disable system services
 - 🏥 **Health Check:** Monitor disk space, system load, broken packages, and security updates
 - 🌐 **Network Diagnostics:** DNS lookup, traceroute, ping, bandwidth monitoring, firewall status
@@ -51,7 +51,7 @@ Run `robohelp` without arguments to launch the interactive main menu, or use com
   -pp,  --p-purge <name>        Purge package(s) with dependencies
 
 ⚙️  System Tools (Quick Commands):
-  -ssh, --ssh-settings          SSH configuration menu
+  -ssh, --ssh-settings [search] SSH configuration menu, or reconnect to a previously used host matching [search]
   -hc,  --health-check          Run system health check
   -nd,  --network-diag          Network diagnostics menu
   -dm,  --disk-management       Disk management menu
@@ -83,6 +83,13 @@ robohelp --ansible
 ---
 
 ## 🏥 System Tools
+
+**SSH Management**
+Establish SSH connections, generate and copy SSH keys, and edit your SSH config. Every manual connection is remembered, so you can jump straight back in without the menu:
+```bash
+robohelp -ssh 159
+```
+This searches your previously used SSH connections for one matching `159` and connects directly. If more than one match is found (e.g. the same host under different users), you'll get a menu to pick from.
 
 **Health Check**
 Monitor your system's health including disk space, CPU load, broken packages, and available security updates.
