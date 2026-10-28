@@ -21,9 +21,18 @@ teardown() {
     PATH="$ORIGINAL_PATH"
 }
 
+# Prepends a fake uname binary to PATH that prints $1 for `uname -s`.
+mock_uname() {
+    mkdir -p "$BATS_TEST_TMPDIR/bin"
+    printf '#!/bin/sh\necho "%s"\n' "$1" > "$BATS_TEST_TMPDIR/bin/uname"
+    chmod +x "$BATS_TEST_TMPDIR/bin/uname"
+    PATH="$BATS_TEST_TMPDIR/bin:$PATH"
+}
+
 # Prepends a fake lsb_release binary to PATH that prints $1 for `lsb_release -si`.
 mock_lsb_release() {
     mkdir -p "$BATS_TEST_TMPDIR/bin"
+    mock_uname "Linux"
     printf '#!/bin/sh\necho "%s"\n' "$1" > "$BATS_TEST_TMPDIR/bin/lsb_release"
     chmod +x "$BATS_TEST_TMPDIR/bin/lsb_release"
     PATH="$BATS_TEST_TMPDIR/bin:$PATH"
@@ -104,6 +113,14 @@ mock_lsb_release() {
     det_release
     [ "$distro" = "opensuse" ]
     [ "$install_cmd" = "sudo zypper install -y" ]
+}
+
+@test "det_release recognizes macos and sets brew commands" {
+    mock_uname "Darwin"
+    det_release
+    [ "$distro" = "macos" ]
+    [ "$install_cmd" = "brew install" ]
+    [ "$service_manager" = "brew" ]
 }
 
 @test "det_release exits 1 and prints an error for an unsupported distro" {

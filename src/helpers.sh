@@ -94,7 +94,9 @@ check_and_update() {
 
 # Function to determine distro and set commands
 det_release() {
-    if command -v lsb_release &>/dev/null; then
+    if [ "$(uname -s)" = "Darwin" ]; then
+	    distro="macos"
+    elif command -v lsb_release &>/dev/null; then
 	    distro=$(lsb_release -si)
     elif [ -f /etc/os-release ]; then
 	    distro=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"' )
@@ -102,10 +104,32 @@ det_release() {
 	    distro="unknown"
     fi
 
-    # Convert to lowercase
-    distro="${distro,,}"
+    # Convert to lowercase (tr instead of ${,,} for macOS bash 3.2)
+    distro=$(echo "$distro" | tr '[:upper:]' '[:lower:]')
 
     case "$distro" in
+	macos)
+        # Homebrew refuses to run as root, so no sudo here
+        update_cmd="brew update"
+        upgrade_cmd="brew upgrade"
+        dist_upgrade_cmd="sudo softwareupdate -ia"
+        autoremove_cmd="brew autoremove"
+        autoclean_cmd="brew cleanup"
+	    install_cmd="brew install"
+	    remove_cmd="brew uninstall"
+        purge_cmd="brew uninstall --zap"
+        search_cmd="brew search"
+	    check_broken_cmd="unknown"
+	    check_security_cmd="brew outdated 2>/dev/null | wc -l"
+	    service_manager="brew"
+	    service_list_cmd="brew_services_list"
+	    service_start_cmd="brew services start"
+	    service_stop_cmd="brew services stop"
+	    service_restart_cmd="brew services restart"
+	    service_status_cmd="brew_services_info"
+	    service_enable_cmd="brew services start"
+	    service_disable_cmd="brew services stop"
+	    ;;
 	ubuntu|debian|kali)
         update_cmd="sudo apt update"
 	    upgrade_cmd="sudo apt upgrade -y"
@@ -218,6 +242,19 @@ det_release() {
     esac
 }
 
+# brew services wrappers: swallow systemctl flags (--all, --no-pager, --state=...)
+brew_services_list() {
+    case "$*" in
+        *running*) brew services list | grep -E '^Name|started' ;;
+        *failed*)  brew services list | grep -E '^Name|error' ;;
+        *)         brew services list ;;
+    esac
+}
+
+brew_services_info() {
+    brew services info "$1"
+}
+
 # Check if user has sudo rights
 require_root() {
     if sudo -l -U "$USER" &>/dev/null; then
@@ -256,6 +293,33 @@ check_dialog() {
     	return 0
     else
     	return 1
+    fi
+}
+
+# Check if Homebrew is installed on macOS, else offer to install it
+check_brew() {
+    # Apple Silicon installs to /opt/homebrew, which may not be in PATH yet
+    if ! command -v brew &>/dev/null && [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+    command -v brew &>/dev/null && return 0
+
+    echo -e "${YELLOW}⚠️  'Homebrew' is not installed. Package and service management need it!${NC}"
+    echo -e "${CYAN}Would you like to install it now? [Y/n]${NC}"
+    read -r install_choice
+
+    if [[ "$install_choice" =~ ^[Yy]$ ]] || [[ -z "$install_choice" ]]; then
+        echo -e "${CYAN}Installing Homebrew...${NC}"
+        if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+            [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+            echo -e "${GREEN}✅ Homebrew installed successfully!${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Failed to install Homebrew.${NC}"
+            return 1
+        fi
+    else
+        return 1
     fi
 }
 

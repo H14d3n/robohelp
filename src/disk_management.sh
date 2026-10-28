@@ -60,7 +60,7 @@ disk_management() {
         echo
         
         if command -v du &>/dev/null; then
-            du -h --max-depth=1 "$target_dir" 2>/dev/null | sort -hr | head -20
+            du -h -d 1 "$target_dir" 2>/dev/null | sort -hr | head -20
         else
             echo -e "${RED}❌ 'du' command not found${NC}"
         fi
@@ -228,7 +228,8 @@ disk_management() {
         total_size=0
         for trash_dir in "${trash_dirs[@]}"; do
             if [ -d "$trash_dir" ]; then
-                size=$(du -sb "$trash_dir" 2>/dev/null | cut -f1)
+                # -sk instead of -sb: BSD du (macOS) has no -b
+                size=$(du -sk "$trash_dir" 2>/dev/null | cut -f1)
                 if [ -n "$size" ] && [ "$size" -gt 0 ]; then
                     human_size=$(du -sh "$trash_dir" 2>/dev/null | cut -f1)
                     echo -e "${CYAN}Trash location: $trash_dir (${human_size})${NC}"

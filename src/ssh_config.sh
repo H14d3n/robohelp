@@ -29,7 +29,7 @@ ssh_load_history_commands() {
         return 1
     fi
 
-    mapfile -t ssh_commands < ~/.ssh/.robohelp_lsc.txt
+    ssh_commands=(); while IFS= read -r l || [ -n "$l" ]; do ssh_commands+=("$l"); done < ~/.ssh/.robohelp_lsc.txt
 
     [ ${#ssh_commands[@]} -gt 0 ]
 }

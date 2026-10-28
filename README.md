@@ -8,7 +8,7 @@
                                    |_|    
 ```
 
-**RoboHelp** is a user-friendly command-line tool for performing system maintenance on different Linux distributions.
+**RoboHelp** is a user-friendly command-line tool for performing system maintenance on different Linux distributions and macOS (via Homebrew).
 
 
 
@@ -18,7 +18,7 @@
 - 📦 Automatic package cleanup and management
 - 🧹 Autoremove and autoclean handled automatically
 - 🎨 Cool ASCII banner and BB-8 art on start
-- 🖥️ Detects your Linux distro
+- 🖥️ Detects your Linux distro or macOS
 - 📚 Easy to use with help command and interactive menus
 - ⚡ **AFM (Ansible Fast Management):** Integrated menu for running Ansible playbooks, pinging hosts, viewing inventory, and checking logs
 - 🔁 **SSH Management:** Save SSH connections, distribute keys, configure settings, and reconnect instantly by searching past hosts (`-ssh <search>`)

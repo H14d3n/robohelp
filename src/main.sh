@@ -71,6 +71,7 @@ show_main_menu() {
 main() {
     show_banner
     det_release
+    [ "$distro" = "macos" ] && check_brew
     echo
 
     # Check for updates (pass all arguments to handle re-execution)

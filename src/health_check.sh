@@ -21,11 +21,11 @@ health_check() {
     # Check System Load
     echo -e "${YELLOW}⚙️ System Load:${NC}"
     if command -v uptime &>/dev/null; then
-        load_avg=$(uptime | awk -F'load average:' '{print $2}' | xargs)
+        load_avg=$(uptime | awk -F'load averages?:' '{print $2}' | xargs)
         echo -e "   Load Average: $load_avg"
         
-        cpu_cores=$(nproc 2>/dev/null || echo "1")
-        load_1min=$(echo "$load_avg" | awk '{print $1}' | sed 's/,//')
+        cpu_cores=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo "1")
+        load_1min=$(echo "$load_avg" | awk '{print $1}' | sed 's/,$//; s/,/./')
         
         # Compare load to CPU cores (basic threshold)
         if command -v bc &>/dev/null; then
@@ -111,7 +111,7 @@ health_check() {
                     echo -e "   ${YELLOW}ℹ️  Install 'pacman-contrib' for update checking${NC}"
                 fi
                 ;;
-            fedora|centos|rhel|opensuse*)
+            fedora|centos|rhel|opensuse*|macos)
                 updates=$(eval "$check_security_cmd" 2>/dev/null | xargs)
                 updates=${updates:-0}
                 if [ "$updates" -gt 0 ] 2>/dev/null; then

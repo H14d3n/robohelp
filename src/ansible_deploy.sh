@@ -31,7 +31,7 @@ ansible_deploy() {
     fi
 
     find_playbook() {
-        mapfile -t playbooks < <(find . -type f -name "*.yml")
+        playbooks=(); while IFS= read -r f; do playbooks+=("$f"); done < <(find . -type f -name "*.yml")
 
         if [ ${#playbooks[@]} -eq 0 ]; then
             echo -e "${RED}🛑 No playbook files (.yml) found in current directory.${NC}"
@@ -171,7 +171,7 @@ ansible_deploy() {
             read -r ansible_vault_val
             echo
 
-            case "${ansible_vault_val,,}" in
+            case "$(echo "$ansible_vault_val" | tr "[:upper:]" "[:lower:]")" in
                 yes)
                     vault_flag="--ask-vault-pass"
                     ;;

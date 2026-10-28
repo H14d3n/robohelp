@@ -143,7 +143,7 @@ network_diagnostics() {
             ifconfig
             echo
             echo -e "${YELLOW}Routing Table:${NC}"
-            route -n
+            netstat -rn
         else
             echo -e "${RED}❌ No network tools available (ip or ifconfig)${NC}"
         fi
@@ -203,7 +203,13 @@ network_diagnostics() {
             echo
         fi
         
-        if ! command -v ufw &>/dev/null && ! command -v iptables &>/dev/null && ! command -v firewall-cmd &>/dev/null; then
+        if [ -x /usr/libexec/ApplicationFirewall/socketfilterfw ]; then
+            echo -e "${YELLOW}macOS Application Firewall:${NC}"
+            /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+            echo
+        fi
+        
+        if ! command -v ufw &>/dev/null && ! command -v iptables &>/dev/null && ! command -v firewall-cmd &>/dev/null && [ "$distro" != "macos" ]; then
             echo -e "${YELLOW}⚠️  No firewall tools detected${NC}"
         fi
         echo
@@ -222,7 +228,7 @@ network_diagnostics() {
             ss -tn state established
         elif command -v netstat &>/dev/null; then
             echo -e "${YELLOW}Listening ports:${NC}"
-            netstat -tulpn
+            netstat -tulpn 2>/dev/null || netstat -an | grep LISTEN
             echo
             echo -e "${YELLOW}Established connections:${NC}"
             netstat -tn | grep ESTABLISHED

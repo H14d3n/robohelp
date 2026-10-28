@@ -160,11 +160,11 @@ troubleshooting_wizard() {
         echo
         
         echo -e "${CYAN}📊 Current CPU usage:${NC}"
-        top -bn1 | head -n 12
+        { top -bn1 2>/dev/null || top -l 1; } | head -n 12
         echo
         
         echo -e "${CYAN}📊 Top 10 CPU-consuming processes:${NC}"
-        ps aux --sort=-%cpu | head -n 11
+        ps aux | sort -nrk 3 | head -n 10
         echo
         
         echo -e "${YELLOW}Step 2: Common causes and solutions:${NC}"
@@ -182,7 +182,7 @@ troubleshooting_wizard() {
             echo -e "${YELLOW}Press any key to continue...${NC}"
             read -n 1 -s -r
             # Get top 15 CPU processes and format for dialog menu
-        mapfile -t process_list < <(ps aux --sort=-%cpu | awk 'NR>1 && NR<=16 {printf "%s|%s|%s|%s\n", $2, $3, $11, $0}')
+        process_list=(); while IFS= read -r p; do process_list+=("$p"); done < <(ps aux | sort -nrk 3 | awk 'NR<=15 {printf "%s|%s|%s|%s\n", $2, $3, $11, $0}')
         
         if [ ${#process_list[@]} -gt 0 ]; then
             # Build dialog menu items
@@ -248,7 +248,7 @@ troubleshooting_wizard() {
         # Fallback for non-dialog systems
         echo
         echo -e "${CYAN}Top CPU processes:${NC}"
-        ps aux --sort=-%cpu | head -n 11 | awk 'NR>1 {printf "[%s] CPU:%s%% - %s\n", $2, $3, $11}'
+        ps aux | sort -nrk 3 | head -n 10 | awk '{printf "[%s] CPU:%s%% - %s\n", $2, $3, $11}'
         echo
         echo -e "${CYAN}Enter PID to kill (or press Enter to skip):${NC}"
         read -r pid
@@ -280,11 +280,11 @@ troubleshooting_wizard() {
         echo
         
         echo -e "${CYAN}📊 Largest directories in /home:${NC}"
-        du -h --max-depth=1 /home 2>/dev/null | sort -hr | head -n 10
+        du -h -d 1 /home 2>/dev/null | sort -hr | head -n 10
         echo
         
         echo -e "${CYAN}📊 Largest directories in /var:${NC}"
-        sudo du -h --max-depth=1 /var 2>/dev/null | sort -hr | head -n 10
+        sudo du -h -d 1 /var 2>/dev/null | sort -hr | head -n 10
         echo
         
         echo -e "${YELLOW}Step 2: Cleanup options:${NC}"
@@ -392,7 +392,11 @@ troubleshooting_wizard() {
         echo -e "${YELLOW}Step 2: Checking service logs...${NC}"
         echo
         echo -e "${CYAN}📋 Recent logs for $service_name:${NC}"
-        sudo journalctl -u "$service_name" -n 30 --no-pager
+        if command -v journalctl &>/dev/null; then
+            sudo journalctl -u "$service_name" -n 30 --no-pager
+        else
+            echo -e "${YELLOW}⚠️  journalctl not available (systemd not available)${NC}"
+        fi
         echo
         
         echo -e "${YELLOW}Step 3: Common solutions:${NC}"
@@ -487,7 +491,7 @@ troubleshooting_wizard() {
         echo -e "${YELLOW}Step 3: Checking network and firewall...${NC}"
         echo
         echo -e "${CYAN}📊 Listening SSH ports:${NC}"
-        ss -tlnp | grep -E "(:22|ssh)" || netstat -tlnp | grep -E "(:22|ssh)" 2>/dev/null
+        ss -tlnp 2>/dev/null | grep -E "(:22|ssh)" || netstat -an | grep LISTEN | grep -E "([.:]22 |ssh)" 2>/dev/null
         echo
         
         echo -e "${CYAN}📊 Firewall status:${NC}"
